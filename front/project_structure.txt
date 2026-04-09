@@ -1,0 +1,93 @@
+📂 Project Structure:
+
+├── src
+│   ├── app
+│   │   ├── components
+│   │   │   ├── figma
+│   │   │   │   └── ImageWithFallback.tsx
+│   │   │   ├── ui
+│   │   │   │   ├── accordion.tsx
+│   │   │   │   ├── alert-dialog.tsx
+│   │   │   │   ├── alert.tsx
+│   │   │   │   ├── aspect-ratio.tsx
+│   │   │   │   ├── avatar.tsx
+│   │   │   │   ├── badge.tsx
+│   │   │   │   ├── breadcrumb.tsx
+│   │   │   │   ├── button.tsx
+│   │   │   │   ├── calendar.tsx
+│   │   │   │   ├── card.tsx
+│   │   │   │   ├── carousel.tsx
+│   │   │   │   ├── chart.tsx
+│   │   │   │   ├── checkbox.tsx
+│   │   │   │   ├── collapsible.tsx
+│   │   │   │   ├── command.tsx
+│   │   │   │   ├── context-menu.tsx
+│   │   │   │   ├── dialog.tsx
+│   │   │   │   ├── drawer.tsx
+│   │   │   │   ├── dropdown-menu.tsx
+│   │   │   │   ├── form.tsx
+│   │   │   │   ├── hover-card.tsx
+│   │   │   │   ├── input-otp.tsx
+│   │   │   │   ├── input.tsx
+│   │   │   │   ├── label.tsx
+│   │   │   │   ├── menubar.tsx
+│   │   │   │   ├── navigation-menu.tsx
+│   │   │   │   ├── pagination.tsx
+│   │   │   │   ├── popover.tsx
+│   │   │   │   ├── progress.tsx
+│   │   │   │   ├── radio-group.tsx
+│   │   │   │   ├── resizable.tsx
+│   │   │   │   ├── scroll-area.tsx
+│   │   │   │   ├── select.tsx
+│   │   │   │   ├── separator.tsx
+│   │   │   │   ├── sheet.tsx
+│   │   │   │   ├── sidebar.tsx
+│   │   │   │   ├── skeleton.tsx
+│   │   │   │   ├── slider.tsx
+│   │   │   │   ├── sonner.tsx
+│   │   │   │   ├── switch.tsx
+│   │   │   │   ├── table.tsx
+│   │   │   │   ├── tabs.tsx
+│   │   │   │   ├── textarea.tsx
+│   │   │   │   ├── toggle-group.tsx
+│   │   │   │   ├── toggle.tsx
+│   │   │   │   ├── tooltip.tsx
+│   │   │   │   ├── use-mobile.ts
+│   │   │   │   └── utils.ts
+│   │   │   ├── critical-threats.tsx
+│   │   │   ├── equipment-table.tsx
+│   │   │   ├── expert-panel.tsx
+│   │   │   ├── export-modal.tsx
+│   │   │   ├── risk-matrix.tsx
+│   │   │   └── sidebar-nav.tsx
+│   │   ├── pages
+│   │   │   ├── analytics.tsx
+│   │   │   ├── cyber-access.tsx
+│   │   │   ├── cyber-analytics.tsx
+│   │   │   ├── cyber-assets.tsx
+│   │   │   ├── cyber-data.tsx
+│   │   │   ├── cyber-settings.tsx
+│   │   │   ├── cyber-threats.tsx
+│   │   │   ├── cybersecurity.tsx
+│   │   │   ├── not-found.tsx
+│   │   │   ├── placeholder.tsx
+│   │   │   ├── projects.tsx
+│   │   │   ├── reports.tsx
+│   │   │   ├── risk-analysis.tsx
+│   │   │   ├── risk-management.tsx
+│   │   │   ├── settings.tsx
+│   │   │   └── team.tsx
+│   │   ├── App.tsx
+│   │   └── routes.tsx
+│   ├── styles
+│   │   ├── fonts.css
+│   │   ├── index.css
+│   │   ├── tailwind.css
+│   │   └── theme.css
+│   ├── index.html
+│   ├── main.tsx
+│   ├── package-lock.json
+│   ├── package.json
+│   └── vite.config.js
+├── project_structure.txt
+└── scan.py

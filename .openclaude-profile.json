@@ -1,0 +1,9 @@
+{
+  "profile": "gemini",
+  "env": {
+    "OPENAI_BASE_URL": "https://generativelanguage.googleapis.com/v1beta/openai/",
+    "OPENAI_MODEL": "gemini-3-flash-preview",
+    "OPENAI_API_KEY": "AIzaSyCvqxr7ZG83eXtqzu9c5mnvH5YFaQnfpuI"
+  },
+  "createdAt": "2026-04-08T12:52:58.254Z"
+}

@@ -1,0 +1,31 @@
+version: '3.8'
+
+services:
+  postgres:
+    image: postgres:15-alpine
+    container_name: expert_postgres
+    environment:
+      POSTGRES_USER: admin
+      POSTGRES_PASSWORD: 170273
+      POSTGRES_DB: expert_system
+    ports:
+      - "5432:5432"
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+    restart: unless-stopped
+
+  mongodb:
+    image: mongo:6.0
+    container_name: expert_mongodb
+    environment:
+      MONGO_INITDB_ROOT_USERNAME: admin
+      MONGO_INITDB_ROOT_PASSWORD: 170273
+    ports:
+      - "27017:27017"
+    volumes:
+      - mongodata:/data/db
+    restart: unless-stopped
+
+volumes:
+  pgdata:
+  mongodata:
