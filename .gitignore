@@ -1,1 +1,4 @@
 .aider*
+front/src/node_modules/
+__pycache__/
+.env
