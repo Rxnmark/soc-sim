@@ -2,9 +2,10 @@ import { useEffect, useState } from "react";
 import { Card } from "./ui/card";
 import { Badge } from "./ui/badge";
 import { AlertTriangle, DollarSign, TrendingUp, ShieldAlert, SearchX } from "lucide-react";
+import { useTranslation } from "../../context/LanguageContext";
 
-// ДОДАЄМО ПАРАМЕТР SEARCH QUERY
 export function CriticalThreats({ searchQuery = "" }: { searchQuery?: string }) {
+  const { t } = useTranslation();
   const [threats, setThreats] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
 
@@ -22,8 +23,13 @@ export function CriticalThreats({ searchQuery = "" }: { searchQuery?: string }) 
 
   const formatCurrency = (amount: number) => new Intl.NumberFormat("en-US", { style: "currency", currency: "USD", maximumFractionDigits: 0 }).format(amount);
   const calculateFinancialImpact = (impactScore: number) => impactScore * 750000 + 45000;
-  const getProbabilityText = (prob: number) => prob >= 4 ? "High" : prob === 3 ? "Medium" : "Low";
   
+  const getProbabilityText = (prob: number) => {
+    if (prob >= 4) return t('severity.high');
+    if (prob === 3) return t('severity.medium');
+    return t('severity.low');
+  };
+    
   const getSeverityInfo = (prob: number, imp: number) => {
     const score = prob * imp;
     if (score >= 15) return { text: "Critical", color: "text-red-500", bg: "bg-red-500/10 border-red-500/20" };
@@ -31,7 +37,6 @@ export function CriticalThreats({ searchQuery = "" }: { searchQuery?: string }) 
     return { text: "Medium", color: "text-yellow-500", bg: "bg-yellow-500/10 border-yellow-500/20" };
   };
 
-  // ФІЛЬТРУЄМО РИЗИКИ НА ОСНОВІ ПОШУКУ
   const filteredThreats = threats.filter(threat => 
     threat.title.toLowerCase().includes(searchQuery.toLowerCase()) || 
     threat.category.toLowerCase().includes(searchQuery.toLowerCase())
@@ -43,26 +48,25 @@ export function CriticalThreats({ searchQuery = "" }: { searchQuery?: string }) 
     <Card className="p-6 bg-card border-border">
       <div className="flex items-center justify-between mb-6">
         <div>
-          <h2 className="text-xl font-bold text-card-foreground mb-1">Top Critical Threats</h2>
+          <h2 className="text-xl font-bold text-card-foreground mb-1">{t('critical_threats.title', 'Top Critical Threats')}</h2>
           <p className="text-sm text-muted-foreground">
-            Total Financial Exposure: <span className="text-red-500 font-bold tracking-wide">{formatCurrency(totalExposure)}</span>
+            {t('critical_threats.total_exposure', 'Total Financial Exposure:')} <span className="text-red-500 font-bold tracking-wide">{formatCurrency(totalExposure)}</span>
           </p>
         </div>
         <div className="flex items-center gap-2 px-3 py-1.5 rounded-lg bg-red-500/10 border border-red-500/20">
           <AlertTriangle className="w-4 h-4 text-red-500 animate-pulse" />
-          <span className="text-sm text-red-500 font-semibold">{filteredThreats.length} Active</span>
+          <span className="text-sm text-red-500 font-semibold">{t('critical_threats.active', 'Active')} {filteredThreats.length}</span>
         </div>
       </div>
 
       <div className="space-y-3">
         {loading ? (
-          <div className="p-8 text-center text-muted-foreground">Аналіз загроз...</div>
+          <div className="p-8 text-center text-muted-foreground">{t('dashboard.monitoring', 'Monitoring...')}</div>
         ) : filteredThreats.length === 0 ? (
-          // ПОВІДОМЛЕННЯ ЯКЩО ПОШУК НІЧОГО НЕ ЗНАЙШОВ
           <div className="p-8 text-center text-muted-foreground flex flex-col items-center gap-3 bg-muted/20 rounded-lg border border-dashed border-border">
             <SearchX className="w-8 h-8 opacity-50" />
-            <p>No threats matching <span className="font-semibold text-foreground">"{searchQuery}"</span></p>
-            <button onClick={() => window.document.querySelector('input')?.focus()} className="text-xs text-primary hover:underline">Clear search</button>
+            <p>{t('critical_threats.no_threats_matching', 'No threats matching')} <span className="font-semibold text-foreground">"{searchQuery}"</span></p>
+            <button onClick={() => window.document.querySelector('input')?.focus()} className="text-xs text-primary hover:underline">{t('critical_threats.clear_search', 'Clear search')}</button>
           </div>
         ) : (
           filteredThreats.map((threat, index) => {
@@ -77,10 +81,9 @@ export function CriticalThreats({ searchQuery = "" }: { searchQuery?: string }) 
                       <span className="text-xs font-mono text-muted-foreground w-5">#{index + 1}</span>
                       <h3 className="text-sm font-semibold text-card-foreground truncate group-hover:text-primary transition-colors">{threat.title}</h3>
                     </div>
-                    
                     <div className="flex items-center gap-3 text-xs text-muted-foreground ml-7">
                       <Badge variant="secondary" className="bg-muted text-muted-foreground hover:bg-muted font-normal">{threat.category}</Badge>
-                      <span className="flex items-center gap-1"><TrendingUp className="w-3 h-3" /> Prob: {getProbabilityText(threat.probability)}</span>
+                      <span className="flex items-center gap-1"><TrendingUp className="w-3 h-3" /> {t('critical_threats.prob', 'Prob')}: {getProbabilityText(threat.probability)}</span>
                       <Badge variant="outline" className={`${severity.bg} ${severity.color} uppercase px-2 py-0 font-semibold text-[10px]`}>{severity.text}</Badge>
                     </div>
                   </div>
@@ -89,7 +92,7 @@ export function CriticalThreats({ searchQuery = "" }: { searchQuery?: string }) 
                     <DollarSign className="w-4 h-4 text-red-500" />
                     <div>
                       <p className="text-sm text-red-500 font-bold">{formatCurrency(financialImpact)}</p>
-                      <p className="text-[10px] text-muted-foreground uppercase tracking-wider mt-0.5">Est. Loss</p>
+                      <p className="text-[10px] text-muted-foreground uppercase tracking-wider mt-0.5">{t('critical_threats.est_loss', 'Est. Loss')}</p>
                     </div>
                   </div>
                 </div>

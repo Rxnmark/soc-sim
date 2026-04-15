@@ -6,14 +6,15 @@ import { ExportModal } from "../components/export-modal";
 import { NotificationsPopover } from "../components/notifications-popover";
 import { Button } from "../components/ui/button";
 import { FileDown, Search, RefreshCw, X } from "lucide-react";
+import { useTranslation } from "../../context/LanguageContext";
 
 export default function RiskManagementDashboard() {
+  const { t } = useTranslation();
   const [isExportModalOpen, setIsExportModalOpen] = useState(false);
   const [apiData, setApiData] = useState<any>(null);
   const [lastUpdated, setLastUpdated] = useState<Date>(new Date());
   const [isRefreshing, setIsRefreshing] = useState(false);
   
-  // НОВИЙ СТАН ДЛЯ ЖИВОГО ПОШУКУ
   const [searchQuery, setSearchQuery] = useState("");
 
   const fetchSummary = async (isManual = false) => {
@@ -24,7 +25,7 @@ export default function RiskManagementDashboard() {
       setApiData(data);
       setLastUpdated(new Date());
     } catch (error) {
-      console.error("Помилка підключення до API:", error);
+      console.error("Error fetching summary:", error);
     } finally {
       if (isManual) setTimeout(() => setIsRefreshing(false), 500);
     }
@@ -44,9 +45,7 @@ export default function RiskManagementDashboard() {
     return () => clearInterval(interval);
   }, []);
 
-  const formattedTime = lastUpdated.toLocaleTimeString("uk-UA", {
-    hour: "2-digit", minute: "2-digit", second: "2-digit",
-  });
+  const formattedTime = lastUpdated.toLocaleTimeString();
 
   return (
     <div className="h-screen w-full flex bg-background overflow-hidden">
@@ -54,10 +53,10 @@ export default function RiskManagementDashboard() {
       <div className="flex-1 flex flex-col overflow-hidden">
         <header className="h-16 border-b border-border bg-card flex items-center justify-between px-6 z-10">
           <div>
-            <h1 className="text-card-foreground font-semibold">Risk Management Dashboard</h1>
+            <h1 className="text-card-foreground font-semibold">{t('riskManagement.title', 'Risk Management')}</h1>
             <div className="flex items-center gap-2 mt-0.5">
               <p className="text-xs text-muted-foreground">
-                Last updated: <span className="font-mono">{formattedTime}</span>
+                {t('dashboard.last_updated', 'Last updated')}: <span className="font-mono">{formattedTime}</span>
               </p>
               <button 
                 onClick={() => fetchSummary(true)} disabled={isRefreshing}
@@ -69,14 +68,13 @@ export default function RiskManagementDashboard() {
           </div>
 
           <div className="flex items-center gap-3">
-            {/* ОНОВЛЕНИЙ РЯДОК ПОШУКУ */}
             <div className="relative flex items-center">
               <Search className="absolute left-3 w-4 h-4 text-muted-foreground" />
               <input
                 type="text"
                 value={searchQuery}
                 onChange={(e) => setSearchQuery(e.target.value)}
-                placeholder="Search risks (e.g. Cyber)..."
+                placeholder={t('riskManagement.search_placeholder', 'Search risks')}
                 className="pl-9 pr-8 py-2 rounded-lg bg-muted border border-border text-sm text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-1 focus:ring-primary w-64 transition-all"
               />
               {searchQuery && (
@@ -93,7 +91,7 @@ export default function RiskManagementDashboard() {
 
             <Button onClick={() => setIsExportModalOpen(true)} className="bg-primary text-primary-foreground hover:bg-primary/90">
               <FileDown className="w-4 h-4 mr-2" />
-              Export Reports
+              {t('dashboard.export_reports', 'Export Reports')}
             </Button>
           </div>
         </header>
@@ -102,24 +100,23 @@ export default function RiskManagementDashboard() {
           <div className="max-w-[1600px] mx-auto space-y-6">
             <div className="grid grid-cols-4 gap-4">
               <div className="p-4 rounded-lg bg-card border border-border shadow-sm">
-                <p className="text-xs text-muted-foreground mb-1">Total Risks</p>
+                <p className="text-xs text-muted-foreground mb-1">{t('dashboard.total_risks', 'Total Risks')}</p>
                 <p className="text-2xl font-bold text-card-foreground">{apiData ? apiData.total_risks : "..."}</p>
               </div>
               <div className="p-4 rounded-lg bg-card border border-border shadow-sm">
-                <p className="text-xs text-muted-foreground mb-1">Critical Threats</p>
+                <p className="text-xs text-muted-foreground mb-1">{t('dashboard.critical_threats', 'Critical Threats')}</p>
                 <p className="text-2xl font-bold text-red-500">{apiData ? apiData.critical_threats : "..."}</p>
               </div>
               <div className="p-4 rounded-lg bg-card border border-border shadow-sm">
-                <p className="text-xs text-muted-foreground mb-1">Financial Exposure</p>
+                <p className="text-xs text-muted-foreground mb-1">{t('dashboard.financial_exposure', 'Financial Exposure')}</p>
                 <p className="text-2xl font-bold text-card-foreground">{apiData ? apiData.financial_exposure : "..."}</p>
               </div>
               <div className="p-4 rounded-lg bg-card border border-border shadow-sm">
-                <p className="text-xs text-muted-foreground mb-1">Mitigation Rate</p>
+                <p className="text-xs text-muted-foreground mb-1">{t('dashboard.mitigation_rate', 'Mitigation Rate')}</p>
                 <p className="text-2xl font-bold text-card-foreground">{apiData ? `${apiData.mitigation_rate}%` : "..."}</p>
               </div>
             </div>
 
-            {/* ПЕРЕДАЄМО ПОШУК У КОМПОНЕНТИ */}
             <RiskMatrix searchQuery={searchQuery} />
             <CriticalThreats searchQuery={searchQuery} />
           </div>

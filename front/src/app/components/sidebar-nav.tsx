@@ -8,6 +8,7 @@ import {
   Briefcase, FileText, Users, LogOut, ChevronRightCircle
 } from "lucide-react";
 import { Button } from "./ui/button";
+import { useTranslation } from "../../context/LanguageContext";
 
 // Типи ролей (залишаємо для логіки)
 type Role = "CEO" | "CISO" | "PM";
@@ -41,6 +42,7 @@ const USERS_DATA = {
 };
 
 export function Sidebar() {
+  const { t } = useTranslation();
   const [role, setRole] = useState<Role>("CEO");
   
   // 3. СТАН ДЛЯ ВІДКРИТТЯ ВІКНА ЛОГІНУ (МОДАЛКИ)
@@ -80,19 +82,19 @@ export function Sidebar() {
 
   // Навігаційні списки (без змін)
   const cyberItems = [
-    { name: "Dashboard", href: "/cybersecurity", icon: LayoutDashboard },
-    { name: "Threat Intelligence", href: "/cybersecurity/threats", icon: AlertTriangle },
-    { name: "Asset Protection", href: "/cybersecurity/assets", icon: Server },
+    { name: t('sidebar.dashboard'), href: "/cybersecurity", icon: LayoutDashboard },
+    { name: t('sidebar.threats'), href: "/cybersecurity/threats", icon: AlertTriangle },
+    { name: t('sidebar.assets'), href: "/cybersecurity/assets", icon: Server },
     { name: "Access Control", href: "/cybersecurity/access", icon: Network },
     { name: "Security Analytics", href: "/cybersecurity/analytics", icon: BarChart3 },
   ];
 
   const riskItems = [
-    { name: "Dashboard", href: "/", icon: LayoutDashboard },
-    { name: "Project Portfolios", href: "/projects", icon: Briefcase },
-    { name: "Risk Analytics", href: "/analytics", icon: BarChart3 },
-    { name: "Compliance Reports", href: "/reports", icon: FileText },
-    { name: "Team Overview", href: "/team", icon: Users },
+    { name: t('riskManagement.sidebarTitle', 'Risk Management'), href: "/", icon: LayoutDashboard },
+    { name: t('sidebar.projects'), href: "/projects", icon: Briefcase },
+    { name: t('sidebar.analytics'), href: "/analytics", icon: BarChart3 },
+    { name: t('sidebar.reports'), href: "/reports", icon: FileText },
+    { name: t('sidebar.team'), href: "/team", icon: Users },
   ];
 
   return (
@@ -129,7 +131,7 @@ export function Sidebar() {
             >
               <div className="flex items-center gap-2">
                 <Shield className="w-3.5 h-3.5" />
-                CYBER DEFENSE
+                {t('sidebar.cyber_defense')}
               </div>
               {isCyberOpen ? <ChevronDown className="w-3.5 h-3.5" /> : <ChevronRight className="w-3.5 h-3.5" />}
             </button>
@@ -170,7 +172,7 @@ export function Sidebar() {
             >
               <div className="flex items-center gap-2">
                 <Briefcase className="w-3.5 h-3.5" />
-                RISK & COMPLIANCE
+                {t('sidebar.risk_compliance')}
               </div>
               {isRiskOpen ? <ChevronDown className="w-3.5 h-3.5" /> : <ChevronRight className="w-3.5 h-3.5" />}
             </button>
@@ -209,7 +211,7 @@ export function Sidebar() {
         <div className="p-4 border-t border-border">
           <Link to="/settings" className={`flex items-center gap-3 px-3 py-2.5 rounded-md text-sm transition-all ${currentPath === '/settings' ? 'bg-primary/10 text-primary font-medium' : 'text-foreground hover:bg-muted/50'}`}>
             <Settings className={`w-4 h-4 ${currentPath === '/settings' ? 'text-primary animate-[spin_3s_linear_infinite]' : 'text-muted-foreground'}`} />
-            System Settings
+            {t('sidebar.settings')}
           </Link>
         </div>
       </div>
