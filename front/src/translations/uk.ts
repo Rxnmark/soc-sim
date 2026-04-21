@@ -62,6 +62,12 @@ export const uk = {
     detected_at: "Виявлено о",
     close: "Закрити",
     realtime_enabled: "Режим реального часу увімкнено",
+    warning_count: "Попередження",
+  },
+  threatCategories: {
+    warning: "Попередні",
+    active: "Активні",
+    critical: "Критичні",
   },
   equipment: {
     title: "Моніторюване обладнання",

@@ -62,6 +62,12 @@ export const en = {
     detected_at: "Detected At",
     close: "Close",
     realtime_enabled: "Real-time updates enabled",
+    warning_count: "Warnings",
+  },
+  threatCategories: {
+    warning: "Warning",
+    active: "Active",
+    critical: "Critical",
   },
   equipment: {
     title: "Monitored Equipment",

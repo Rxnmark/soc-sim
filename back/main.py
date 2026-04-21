@@ -1,13 +1,113 @@
 import asyncio
-from datetime import datetime
+from datetime import datetime, timezone
 from fastapi import FastAPI, Depends, BackgroundTasks
 from fastapi.middleware.cors import CORSMiddleware
 from sqlalchemy.orm import Session
 from pydantic import BaseModel
 import models
 from database import engine, Base, get_db, SessionLocal, security_logs_collection
+import random
 
 app = FastAPI()
+
+# --- SCHEMAS ---
+class ThreatCreate(BaseModel):
+    title: str
+    description: str
+    type: str
+    severity: str
+
+class ThreatResponse(BaseModel):
+    id: int
+    title: str
+    description: str
+    type: str
+    severity: str
+    category: str
+    timestamp: datetime
+
+    class Config:
+        from_attributes = True
+
+# --- UTILS FOR GAME MECHANIC ---
+def generate_random_threat(db: Session):
+    """Generates a random threat categorized as Warning, Active, or Critical."""
+    warning_threats = [
+        {"type": "Port Scan", "severity": "Low", "category": "Warning",
+         "title": "Позадовільне сканування мережі",
+         "description": "Виявлено сканування портів зовнішнім джерелом, розвідка перед атакою"},
+        {"type": "Reconnaissance", "severity": "Low", "category": "Warning",
+         "title": "Розвідувальна активність виявлена",
+         "description": "Підозріла активність збору інформації про інфраструктуру"},
+        {"type": "Policy Violation", "severity": "Low", "category": "Warning",
+         "title": "Порушення політики безпеки",
+         "description": "Виявлено відхилення від базової політики безпеки"},
+        {"type": "Outdated Signature", "severity": "Low", "category": "Warning",
+         "title": "Застарілі сигнатури антивіруса",
+         "description": "База даних сигнатур антивіруса застаріла і потребує оновлення"},
+        {"type": "Config Drift", "severity": "Low", "category": "Warning",
+         "title": "Зміна конфігурації виявлена",
+         "description": "Конфігурація безпеки відхилилася від базової політики"},
+    ]
+    active_threats = [
+        {"type": "DDoS", "severity": "High", "category": "Active",
+         "title": "DDoS-атака в прогресі",
+         "description": "Автоматичне виявлення трафіку DDoS-атаки, спрямованого на внутрішні сегменти"},
+        {"type": "Brute-force", "severity": "High", "category": "Active",
+         "title": "Brute-force атака в прогресі",
+         "description": "Автоматичне виявлення активності brute-force атаки, спрямованої на внутрішні сегменти"},
+        {"type": "SQL Injection", "severity": "High", "category": "Active",
+         "title": "SQL-ін'єкція виявлена",
+         "description": "Спроба SQL-ін'єкції, спрямована на бази даних через поля форм"},
+        {"type": "Phishing", "severity": "High", "category": "Active",
+         "title": "Фішингова кампанія виявлена",
+         "description": "Виящено підозрілі шаблони електронних листів для викрадення облікових даних"},
+        {"type": "Malware", "severity": "High", "category": "Active",
+         "title": "Виявлено шкідливе ПЗ",
+         "description": "Виявлено активність шкідливого ПЗ на системі"},
+    ]
+    critical_threats = [
+        {"type": "Ransomware", "severity": "Critical", "category": "Critical",
+         "title": "Ransomware активність виявлена",
+         "description": "Виявлено активність шифрування ransomware - критичні файли можуть бути під загрозою"},
+        {"type": "Data Exfiltration", "severity": "Critical", "category": "Critical",
+         "title": "Витоку даних виявлено",
+         "description": "Несанкціонований вихід критичних даних за межі мережі виявлено"},
+        {"type": "APT", "severity": "Critical", "category": "Critical",
+         "title": "APT-активність виявлена",
+         "description": "Підозріла повільна активність, що вказує на цільову атаку високого рівня"},
+        {"type": "Zero-day", "severity": "Critical", "category": "Critical",
+         "title": "Zero-day вразливість експлуатується",
+         "description": "Виявлено експлуатацію невідомої вразливості в реальних умовах"},
+        {"type": "Lateral Movement", "severity": "Critical", "category": "Critical",
+         "title": "Бічного переміщення виявлено",
+         "description": "Несанкціоноване переміщення між системами в межах мережі"},
+    ]
+    
+    # Вибігаємо категорію з вагами (40% Warning, 40% Active, 20% Critical)
+    category_weights = random.choices(["Warning", "Active", "Critical"], weights=[40, 40, 20])[0]
+    if category_weights == "Warning":
+        threat_pool = warning_threats
+    elif category_weights == "Active":
+        threat_pool = active_threats
+    else:
+        threat_pool = critical_threats
+    
+    selected = random.choice(threat_pool)
+    
+    new_threat = models.Threat(
+        title=selected["title"],
+        description=selected["description"],
+        type=selected["type"],
+        severity=selected["severity"],
+        category=selected["category"],
+        timestamp=datetime.now(timezone.utc)
+    )
+    db.add(new_threat)
+    db.commit()
+    db.refresh(new_threat)
+    return new_threat
+
 
 app.add_middleware(
     CORSMiddleware,
@@ -73,6 +173,21 @@ def get_all_equipment(db: Session = Depends(get_db)):
         })
     return result
 
+@app.get("/api/v1/threats", response_model=list[ThreatResponse])
+def read_threats(db: Session = Depends(get_db)):
+    threats = db.query(models.Threat).order_by(models.Threat.timestamp.desc()).all()
+    
+    if not threats:
+        generate_random_threat(db)
+        threats = db.query(models.Threat).order_by(models.Threat.timestamp.desc()).all()
+        
+    return threats
+
+@app.post("/api/v1/threats/simulate")
+def simulate_threat(db: Session = Depends(get_db)):
+    """Endpoint to manually trigger a new threat for testing."""
+    return generate_random_threat(db)
+
 # --- 4. ЛОГИ (Без змін) ---
 class SecurityLog(BaseModel):
     event_type: str
@@ -82,7 +197,7 @@ class SecurityLog(BaseModel):
 @app.post("/api/v1/logs")
 async def create_security_log(log: SecurityLog, db: Session = Depends(get_db)):
     log_doc = log.model_dump()
-    log_doc["timestamp"] = datetime.utcnow()
+    log_doc["timestamp"] = datetime.now(timezone.utc)
     result = await security_logs_collection.insert_one(log_doc)
 
     # --- ЕКСПЕРТНА СИСТЕМА: Автоматичний аналіз ---
@@ -152,7 +267,7 @@ async def apply_auto_fix(request: FixRequest, background_tasks: BackgroundTasks,
         "event_type": "Auto-Fix Applied",
         "description": f"Система заблокувала доступ для {target_name} (IP: {request.source_ip}).",
         "source_ip": request.source_ip,
-        "timestamp": datetime.utcnow()
+        "timestamp": datetime.now(timezone.utc)
     })
     
     return {"status": "success"}
@@ -218,19 +333,19 @@ async def reset_database(db: Session = Depends(get_db)): # Додали async
             "event_type": "DDoS Attack",
             "description": "Massive incoming traffic flood detected targeting Web Server Prod-1.",
             "source_ip": "192.168.2.15",
-            "timestamp": datetime.utcnow()
+            "timestamp": datetime.now(timezone.utc)
         },
         {
             "event_type": "Unauthorized Access",
             "description": "Unauthorized Modbus command execution attempt on SCADA Unit A.",
             "source_ip": "10.0.0.5",
-            "timestamp": datetime.utcnow()
+            "timestamp": datetime.now(timezone.utc)
         },
         {
             "event_type": "Security Warning",
             "description": "Outdated Antivirus Signature detected on CEO Workstation.",
             "source_ip": "192.168.5.10",
-            "timestamp": datetime.utcnow()
+            "timestamp": datetime.now(timezone.utc)
         }
     ]
     await security_logs_collection.insert_many(initial_logs)

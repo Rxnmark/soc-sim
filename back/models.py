@@ -1,6 +1,7 @@
-from sqlalchemy import Column, Integer, String, Boolean, ForeignKey, Float
+from sqlalchemy import Column, Integer, String, Boolean, ForeignKey, Float, DateTime
 from sqlalchemy.orm import relationship
 from database import Base
+import datetime
 
 class Equipment(Base):
     __tablename__ = "equipment"
@@ -31,3 +32,14 @@ class BusinessRisk(Base):
     probability = Column(Integer) # Від 1 до 5
     impact = Column(Integer) # Від 1 до 5
     status = Column(String, default="Open") # "Open", "Mitigated", "In Progress"
+
+# --- НОВА ТАБЛИЦЯ ДЛЯ THREAT INTELLIGENCE ---
+class Threat(Base):
+    __tablename__ = "threats"
+    id = Column(Integer, primary_key=True, index=True)
+    title = Column(String)
+    description = Column(String)
+    type = Column(String) # Наприклад: "DDoS", "Malware", "Brute-force", "Phishing"
+    severity = Column(String) # "Low", "Medium", "High", "Critical"
+    category = Column(String, default="Active") # "Warning", "Active", "Critical"
+    timestamp = Column(DateTime, default=datetime.datetime.utcnow)
