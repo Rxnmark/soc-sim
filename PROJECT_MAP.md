@@ -120,5 +120,5 @@
 6. **Мови**: переклади зберігаються у `translations/uk.ts` та `translations/en.ts`, доступ через `useTranslation()` hook
 7. **CORS**: відкритий для всіх джерел (`allow_origins=["*"]`)
 8. **Обладнання має ієрархію** через `parent_id` (self-referencing foreign key)
-9. **Симуляція атак**: POST `/api/v1/simulation/start` запускає `SimulationManager` з асинхронним game loop. Три типи атак з різною логікою впливу. `apply_fix()` для ручного вирішення інцидентів.
+9. **Симуляція атак**: POST `/api/v1/simulation/start` запускає `SimulationManager` з асинхронним game loop. Три типи атак (DDoS, Stealth, Ransomware) з різною логікою впливу. `apply_fix()` для ручного вирішення інцидентів. Архітектура розділена на 3 файли: `attack_definitions.py` (константи), `simulation_core.py` (ядро гри), `simulation.py` (менеджер).
 10. **Експертна система**: `expert-utils.tsx` містить утиліти для перекладу подій (`translateLogEventType`, `getEventDescription`), `sidebar-data.ts` визначає навігаційні items з translation keys для уникнення hook violation
