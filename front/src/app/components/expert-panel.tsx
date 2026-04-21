@@ -53,8 +53,8 @@ export function ExpertPanel({ filterIp }: Props) {
           const simFixResponse = await fetch(`http://127.0.0.1:8000/api/v1/simulation/fix?equipment_id=${targetEq.id}`, {
             method: "POST",
           });
-          if (simFixResponse.ok) {
-            const result = await simFixResponse.json();
+          const result = await simFixResponse.json();
+          if (simFixResponse.ok && result.status === "success") {
             setFixMessage(`Simulation fix applied: ${result.attack_type || 'Attack neutralized'}`);
             setSelectedLog(null);
             fetchLogs();

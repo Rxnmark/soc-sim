@@ -67,14 +67,36 @@ class SimulationManager(SimulationCore):
         db = SessionLocal()
         try:
             attack_data = self.active_attacks.get(equipment_id)
-            if not attack_data:
-                return {"status": "no_active_attack"}
-
-            attack_type = attack_data["type"]
             eq = db.query(models.Equipment).filter(models.Equipment.id == equipment_id).first()
             if not eq:
                 return {"status": "equipment_not_found"}
 
+            # If no simulation attack, fall back to legacy reboot
+            if not attack_data:
+                eq.status = "Rebooting"
+                db.commit()
+                await asyncio.sleep(STANDARD_REBOOT_SECONDS)
+                eq = db.query(models.Equipment).filter(models.Equipment.id == equipment_id).first()
+                if eq:
+                    eq.status = "Online"
+                    db.commit()
+
+                # Resolve any unresolved risks for this equipment
+                db.query(models.RiskAssessment).filter(
+                    models.RiskAssessment.equipment_id == equipment_id
+                ).update({"is_resolved": True})
+                db.commit()
+
+                await security_logs_collection.insert_one({
+                    "event_type": "Auto-Fix Applied",
+                    "description": f"Manual fix applied to {eq.name}.",
+                    "source_ip": eq.ip_address,
+                    "timestamp": datetime.now(timezone.utc),
+                })
+
+                return {"status": "success", "attack_type": "legacy"}
+
+            attack_type = attack_data["type"]
             self.blocked_ips.add(attack_data["source_ip"])
 
             if attack_type == "Ransomware" and eq.status == "Encrypted":
