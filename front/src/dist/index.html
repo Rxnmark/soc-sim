@@ -1,0 +1,27 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Renewable Energy IT Risk Expert System</title>
+    <script>
+      (function() {
+        try {
+          var theme = localStorage.getItem('app-theme');
+          if (!theme) theme = 'dark';
+          var root = document.documentElement;
+          root.classList.remove('light', 'dark');
+          if (theme === 'system') {
+            var isDark = window.matchMedia('(prefers-color-scheme: dark)').matches;
+            root.classList.add(isDark ? 'dark' : 'light');
+          } else {
+            root.classList.add(theme);
+          }
+        } catch(e) {}
+      })();
+    </script>
+    <script type="module" crossorigin src="/assets/index-BUV9ENWN.js"></script>
+    <link rel="stylesheet" crossorigin href="/assets/index-C8dWanUv.css">
+  </head>
+  <body>
+    <div id="root"></div>

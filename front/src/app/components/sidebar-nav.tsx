@@ -1,45 +1,10 @@
 import { useState, useEffect } from "react";
 import { Link, useLocation } from "react-router"; 
-// 1. ІМПОРТУЄМО КОМПОНЕНТИ МОДАЛЬНОГО ВІКНА (ТІ ШО З ФІГМИ/SHADCN)
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from "./ui/dialog";
-import { 
-  Shield, Lock, Settings, User, ChevronDown, ChevronRight,
-  LayoutDashboard, AlertTriangle, Server, Network, BarChart3,
-  Briefcase, FileText, Users, LogOut, ChevronRightCircle
-} from "lucide-react";
+import { Settings, LogOut, ChevronDown, ChevronRight, ChevronRightCircle, Shield, Lock, Briefcase, LayoutDashboard, AlertTriangle, Server, Network, BarChart3, FileText, Users } from "lucide-react";
 import { Button } from "./ui/button";
 import { useTranslation } from "../../context/LanguageContext";
-
-// Типи ролей (залишаємо для логіки)
-type Role = "CEO" | "CISO" | "PM";
-
-// 2. ДАНІ ПЕРСОНАЖІВ ДЛЯ АКАУНТІВ
-const USERS_DATA = {
-  CEO: { 
-    name: "Olena Vance", 
-    title: "Chief Executive Officer", 
-    role: "CEO" as Role,
-    initial: "E", 
-    color: "bg-indigo-500", 
-    desc: "Strategic overview, full access to security & risk metrics."
-  },
-  CISO: { 
-    name: "Dmitro Volhov", 
-    title: "Chief Info. Security Officer", 
-    role: "CISO" as Role,
-    initial: "D", 
-    color: "bg-purple-500", 
-    desc: "Technical focus on threats, assets, and access control."
-  },
-  PM: { 
-    name: "Chloe Dubois", 
-    title: "Lead Risk Manager", 
-    role: "PM" as Role,
-    initial: "C", 
-    color: "bg-emerald-500", 
-    desc: "Compliance reporting, project analytics, and financial risks."
-  }
-};
+import { USERS_DATA, type Role, type NavItem, CYBER_NAV_ITEMS, RISK_NAV_ITEMS } from "./sidebar-data";
 
 export function Sidebar() {
   const { t } = useTranslation();
@@ -55,7 +20,6 @@ export function Sidebar() {
   const currentPath = location.pathname;
 
   useEffect(() => {
-    // Якщо роль не встановлена, примусово відкриваємо логін при старті (опціонально для демо)
     const savedRole = localStorage.getItem("user-role") as Role;
     if (savedRole) {
       setRole(savedRole);
@@ -67,35 +31,20 @@ export function Sidebar() {
   const handleRoleChange = (newRole: Role) => {
     setRole(newRole);
     localStorage.setItem("user-role", newRole);
-    // Після вибору акаунта закриваємо вікно і редиректимо на головну для цієї ролі
     setIsLoginModalOpen(false);
-    if (newRole === "PM") window.location.href = "/"; // Risk Dashboard
-    if (newRole === "CISO") window.location.href = "/cybersecurity"; // Cyber Dashboard
-    // CEO може залишитись де він є
+    if (newRole === "PM") window.location.href = "/";
+    if (newRole === "CISO") window.location.href = "/cybersecurity";
   };
 
   const canAccessCyber = role === "CEO" || role === "CISO";
   const canAccessRisk = role === "CEO" || role === "PM";
-
-  // Отримуємо дані поточного залогіненого юзера
   const currentUser = USERS_DATA[role];
 
-  // Навігаційні списки (без змін)
-  const cyberItems = [
-    { name: t('sidebar.dashboard'), href: "/cybersecurity", icon: LayoutDashboard },
-    { name: t('sidebar.threats'), href: "/cybersecurity/threats", icon: AlertTriangle },
-    { name: t('sidebar.assets'), href: "/cybersecurity/assets", icon: Server },
-    { name: "Access Control", href: "/cybersecurity/access", icon: Network },
-    { name: "Security Analytics", href: "/cybersecurity/analytics", icon: BarChart3 },
-  ];
-
-  const riskItems = [
-    { name: t('riskManagement.sidebarTitle', 'Risk Management'), href: "/", icon: LayoutDashboard },
-    { name: t('sidebar.projects'), href: "/projects", icon: Briefcase },
-    { name: t('sidebar.analytics'), href: "/analytics", icon: BarChart3 },
-    { name: t('sidebar.reports'), href: "/reports", icon: FileText },
-    { name: t('sidebar.team'), href: "/team", icon: Users },
-  ];
+  // Build navigation items with translations at render time (hooks only in components)
+  const cyberItems: Array<{ name: string; href: string; icon: React.ComponentType<{ className?: string }> }> = 
+    CYBER_NAV_ITEMS.map(item => ({ name: t(item.translationKey), href: item.href, icon: item.icon }));
+  const riskItems: Array<{ name: string; href: string; icon: React.ComponentType<{ className?: string }> }> = 
+    RISK_NAV_ITEMS.map(item => ({ name: t(item.translationKey), href: item.href, icon: item.icon }));
 
   return (
     <>
@@ -124,21 +73,21 @@ export function Sidebar() {
         <div className="flex-1 overflow-y-auto p-4 space-y-6 custom-scrollbar">
           
           {/* --- CYBER DEFENSE MODULE --- */}
-          <div>
-            <button 
-              onClick={() => setIsCyberOpen(!isCyberOpen)}
-              className="w-full flex items-center justify-between text-xs font-bold text-muted-foreground tracking-wider mb-2 px-2"
-            >
-              <div className="flex items-center gap-2">
-                <Shield className="w-3.5 h-3.5" />
-                {t('sidebar.cyber_defense')}
-              </div>
-              {isCyberOpen ? <ChevronDown className="w-3.5 h-3.5" /> : <ChevronRight className="w-3.5 h-3.5" />}
-            </button>
+           <div>
+             <button 
+               onClick={() => setIsCyberOpen(!isCyberOpen)}
+               className="w-full flex items-center justify-between text-xs font-bold text-muted-foreground tracking-wider mb-2 px-2"
+             >
+               <div className="flex items-center gap-2">
+                 <Shield className="w-3.5 h-3.5" />
+                 {t('sidebar.cyber_defense')}
+               </div>
+               {isCyberOpen ? <ChevronDown className="w-3.5 h-3.5" /> : <ChevronRight className="w-3.5 h-3.5" />}
+             </button>
             
             {isCyberOpen && (
               <div className="space-y-1">
-                {cyberItems.map((item) => {
+                {cyberItems.map((item: NavItem) => {
                   const isActive = currentPath === item.href;
                   if (!canAccessCyber) {
                     return (
@@ -165,21 +114,21 @@ export function Sidebar() {
           </div>
 
           {/* --- RISK & COMPLIANCE MODULE --- */}
-          <div>
-            <button 
-              onClick={() => setIsRiskOpen(!isRiskOpen)}
-              className="w-full flex items-center justify-between text-xs font-bold text-muted-foreground tracking-wider mb-2 px-2"
-            >
-              <div className="flex items-center gap-2">
-                <Briefcase className="w-3.5 h-3.5" />
-                {t('sidebar.risk_compliance')}
-              </div>
-              {isRiskOpen ? <ChevronDown className="w-3.5 h-3.5" /> : <ChevronRight className="w-3.5 h-3.5" />}
-            </button>
+           <div>
+             <button 
+               onClick={() => setIsRiskOpen(!isRiskOpen)}
+               className="w-full flex items-center justify-between text-xs font-bold text-muted-foreground tracking-wider mb-2 px-2"
+             >
+               <div className="flex items-center gap-2">
+                 <Briefcase className="w-3.5 h-3.5" />
+                 {t('sidebar.risk_compliance')}
+               </div>
+               {isRiskOpen ? <ChevronDown className="w-3.5 h-3.5" /> : <ChevronRight className="w-3.5 h-3.5" />}
+             </button>
             
             {isRiskOpen && (
               <div className="space-y-1">
-                {riskItems.map((item) => {
+                {riskItems.map((item: NavItem) => {
                   const isActive = currentPath === item.href;
                   if (!canAccessRisk) {
                     return (

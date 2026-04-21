@@ -1,9 +1,10 @@
 import { useEffect, useState } from "react";
-import { ShieldAlert, Terminal, Clock, AlertTriangle, Network, CheckCircle2, XCircle, ArrowLeft, FilterX } from "lucide-react";
+import { Terminal, Clock, Network, CheckCircle2, XCircle, ArrowLeft, FilterX, ShieldAlert } from "lucide-react";
 import { Button } from "./ui/button";
 import { Badge } from "./ui/badge";
 import { Card } from "./ui/card";
 import { useTranslation } from "../../context/LanguageContext";
+import { getLogStyle, formatDate, translateLogEventType, getEventDescription } from "./expert-utils";
 
 interface Props {
   filterIp: string | null;
@@ -32,7 +33,6 @@ export function ExpertPanel({ filterIp }: Props) {
     return () => clearInterval(interval);
   }, []);
 
-  // Filter logs by IP
   const displayedLogs = filterIp ? logs.filter(log => log.source_ip === filterIp) : logs;
 
   const handleApplyFix = async () => {
@@ -53,58 +53,6 @@ export function ExpertPanel({ filterIp }: Props) {
     } finally {
       setIsFixing(false);
     }
-  };
-
-  // Style logic for log entries
-  const getLogStyle = (eventType: string) => {
-    const type = eventType.toLowerCase();
-    if (type.includes("unauthorized") || type.includes("attack")) {
-      return { icon: <ShieldAlert className="w-4 h-4 text-red-500" />, color: "text-red-500", badge: "bg-red-500/10 text-red-500 border-red-500/20" };
-    }
-    if (type.includes("auto-fix") || type.includes("applied") || type.includes("success")) {
-      return { icon: <CheckCircle2 className="w-4 h-4 text-emerald-500" />, color: "text-emerald-500", badge: "bg-emerald-500/10 text-emerald-500 border-emerald-500/20" };
-    }
-    return { icon: <AlertTriangle className="w-4 h-4 text-yellow-500" />, color: "text-yellow-500", badge: "bg-yellow-500/10 text-yellow-500 border-yellow-500/20" };
-  };
-
-  const formatDate = (dateString: string) => {
-    if (!dateString) return t('logs.just_now', 'Just now');
-    const date = new Date(dateString);
-    return date.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
-  };
-
-  // Map event_type strings to translation keys
-  const mapEventTypeToKey = (eventType: string): string => {
-    const lower = eventType.toLowerCase();
-    if (lower.includes("unauthorized access")) return "logEventTypes.unauthorized_access_attempt";
-    if (lower.includes("sql injection") || lower.includes("injection")) return "logEventTypes.sql_injection_attempt";
-    if (lower.includes("ddos") || lower.includes("ddos attack")) return "logEventTypes.ddos_attack";
-    if (lower.includes("security warning")) return "logEventTypes.security_warning";
-    if (lower.includes("antivirus signature")) return "logEventTypes.outdated_antivirus_signature";
-    if (lower.includes("configuration drift")) return "logEventTypes.configuration_drift_detected";
-    if (lower.includes("port scan") || lower.includes("scan activity")) return "logEventTypes.port_scan_activity";
-    if (lower.includes("auto-fix") || lower.includes("applied")) return "logEventTypes.auto_fix_applied";
-    return eventType; // fallback to original if no match
-  };
-
-  // Translate log event description based on event type
-  const translateLogEventType = (eventType: string): string => {
-    const key = mapEventTypeToKey(eventType);
-    return t(key, eventType) as string;
-  };
-
-  // Get translated description for an event type
-  const getEventDescription = (eventType: string): string => {
-    const lower = eventType.toLowerCase();
-    if (lower.includes("unauthorized access")) return t("logEventTypes.unauthorized_access_desc", "");
-    if (lower.includes("sql injection")) return t("logEventTypes.sql_injection_desc", "");
-    if (lower.includes("ddos") || lower.includes("ddos attack")) return t("logEventTypes.ddos_attack_desc", "");
-    if (lower.includes("security warning")) return t("logEventTypes.security_warning_desc", "");
-    if (lower.includes("antivirus signature")) return t("logEventTypes.outdated_antivirus_desc", "");
-    if (lower.includes("configuration drift")) return t("logEventTypes.configuration_drift_desc", "");
-    if (lower.includes("port scan") || lower.includes("scan activity")) return t("logEventTypes.port_scan_desc", "");
-    if (lower.includes("auto-fix") || lower.includes("applied")) return t("logEventTypes.auto_fix_desc", "");
-    return eventType;
   };
 
   // DETAIL VIEW COMPONENT
@@ -156,7 +104,7 @@ export function ExpertPanel({ filterIp }: Props) {
             <h3 className="text-sm font-semibold text-card-foreground mb-2.5">{t('logs.event_details', 'Event Details')}</h3>
             <div className={`p-4 rounded-lg border ${isResolved ? 'bg-emerald-500/5 border-emerald-500/20' : 'bg-red-500/5 border-red-500/20'}`}>
               <p className={`text-sm font-semibold mb-1.5 ${style.color}`}>
-                {selectedLog.event_type.includes("Auto-Fix") ? t('logs.action_taken', 'Action Taken') : getEventDescription(selectedLog.event_type)}
+                {selectedLog.event_type.includes("Auto-Fix") ? t('logs.action_taken', 'Action Taken') : getEventDescription(t, selectedLog.event_type)}
               </p>
             </div>
           </div>
@@ -286,7 +234,7 @@ export function ExpertPanel({ filterIp }: Props) {
                   <div className="flex items-center gap-2">
                     {style.icon}
                     <span className={`text-sm font-semibold ${style.color}`}>
-                      {translateLogEventType(log.event_type)}
+                      {translateLogEventType(t, log.event_type)}
                     </span>
                   </div>
                   <div className="flex items-center gap-1.5 text-xs text-muted-foreground font-mono">
@@ -296,7 +244,7 @@ export function ExpertPanel({ filterIp }: Props) {
                 </div>
                 
                 <p className="text-sm text-card-foreground mb-3 leading-relaxed">
-                  {getEventDescription(log.event_type)}
+                  {getEventDescription(t, log.event_type)}
                 </p>
                 
                 <div className="flex items-center justify-between pt-2.5 border-t border-border/50">

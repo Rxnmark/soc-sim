@@ -12,7 +12,6 @@ import CyberAssetsPage from "./pages/cyber-assets";
 import CyberAccessPage from "./pages/cyber-access";
 import CyberDataPage from "./pages/cyber-data";
 import CyberAnalyticsPage from "./pages/cyber-analytics";
-import CyberSettingsPage from "./pages/cyber-settings";
 import NotFoundPage from "./pages/not-found";
 
 export const router = createBrowserRouter([
@@ -67,10 +66,6 @@ export const router = createBrowserRouter([
   {
     path: "/cybersecurity/analytics",
     Component: CyberAnalyticsPage,
-  },
-  {
-    path: "/cybersecurity/settings",
-    Component: CyberSettingsPage,
   },
   {
     path: "*",
