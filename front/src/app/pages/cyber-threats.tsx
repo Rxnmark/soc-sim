@@ -86,11 +86,12 @@ export default function CyberThreatsPage() {
       if (typeLower === 'bruteforce' || typeLower === 'brute-force') return t('genericThreats.bruteforce_desc', '');
       if (typeLower === 'phishing') return t('genericThreats.phishing_desc', '');
       if (typeLower === 'ransomware') return t('genericThreats.ransomware_desc', '');
+      if (typeLower === 'sql injection') return t('genericThreats.sql_injection_desc', '');
       return '';
     };
 
-    // Check if description is already detailed with technical info
-    if (threat.description.match(/[a-f0-9]{12,}|IP|address|from|to|port/i)) {
+    // Check if description is already detailed with technical info (IP addresses, hex strings, port numbers)
+    if (threat.description.match(/\b\d{1,3}\.\d{1,3}\.\d{1,3}\.\d{1,3}\b|[a-f0-9]{16,}|port\s+\d+/i)) {
       return threat.description;
     }
 
@@ -108,6 +109,7 @@ export default function CyberThreatsPage() {
     if (typeLower === 'bruteforce' || typeLower === 'brute-force') return t('genericThreats.bruteforce_title', type);
     if (typeLower === 'phishing') return t('genericThreats.phishing_title', type);
     if (typeLower === 'ransomware') return t('genericThreats.ransomware_title', type);
+    if (typeLower === 'sql injection') return t('genericThreats.sql_injection_title', type);
     return type; // fallback to original if no match
   };
 

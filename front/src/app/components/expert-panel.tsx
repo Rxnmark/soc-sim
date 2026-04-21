@@ -78,6 +78,8 @@ export function ExpertPanel({ filterIp }: Props) {
     const lower = eventType.toLowerCase();
     if (lower.includes("unauthorized access")) return "logEventTypes.unauthorized_access_attempt";
     if (lower.includes("sql injection") || lower.includes("injection")) return "logEventTypes.sql_injection_attempt";
+    if (lower.includes("ddos") || lower.includes("ddos attack")) return "logEventTypes.ddos_attack";
+    if (lower.includes("security warning")) return "logEventTypes.security_warning";
     if (lower.includes("antivirus signature")) return "logEventTypes.outdated_antivirus_signature";
     if (lower.includes("configuration drift")) return "logEventTypes.configuration_drift_detected";
     if (lower.includes("port scan") || lower.includes("scan activity")) return "logEventTypes.port_scan_activity";
@@ -96,6 +98,8 @@ export function ExpertPanel({ filterIp }: Props) {
     const lower = eventType.toLowerCase();
     if (lower.includes("unauthorized access")) return t("logEventTypes.unauthorized_access_desc", "");
     if (lower.includes("sql injection")) return t("logEventTypes.sql_injection_desc", "");
+    if (lower.includes("ddos") || lower.includes("ddos attack")) return t("logEventTypes.ddos_attack_desc", "");
+    if (lower.includes("security warning")) return t("logEventTypes.security_warning_desc", "");
     if (lower.includes("antivirus signature")) return t("logEventTypes.outdated_antivirus_desc", "");
     if (lower.includes("configuration drift")) return t("logEventTypes.configuration_drift_desc", "");
     if (lower.includes("port scan") || lower.includes("scan activity")) return t("logEventTypes.port_scan_desc", "");
@@ -152,7 +156,7 @@ export function ExpertPanel({ filterIp }: Props) {
             <h3 className="text-sm font-semibold text-card-foreground mb-2.5">{t('logs.event_details', 'Event Details')}</h3>
             <div className={`p-4 rounded-lg border ${isResolved ? 'bg-emerald-500/5 border-emerald-500/20' : 'bg-red-500/5 border-red-500/20'}`}>
               <p className={`text-sm font-semibold mb-1.5 ${style.color}`}>
-                {selectedLog.event_type.includes("Auto-Fix") ? t('logs.action_taken', 'Action Taken') : translateLogEventType(selectedLog.event_type)}
+                {selectedLog.event_type.includes("Auto-Fix") ? t('logs.action_taken', 'Action Taken') : getEventDescription(selectedLog.event_type)}
               </p>
             </div>
           </div>
