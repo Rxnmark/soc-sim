@@ -24,6 +24,7 @@ export default function CyberThreatsPage() {
   const [loading, setLoading] = useState(true);
   const [isRefreshing, setIsRefreshing] = useState(false);
   const [selectedThreat, setSelectedThreat] = useState<Threat | null>(null);
+  const [lastUpdateTimestamp, setLastUpdateTimestamp] = useState<Date | null>(null);
 
   const fetchThreats = async (isManual = false) => {
     if (isManual) setIsRefreshing(true);
@@ -32,6 +33,7 @@ export default function CyberThreatsPage() {
       const res = await fetch("http://127.0.0.1:8000/api/v1/threats");
       const data = await res.json();
       setThreats(data);
+      setLastUpdateTimestamp(new Date());
     } catch (error) {
       console.error("Error fetching threats:", error);
     } finally {
@@ -163,7 +165,7 @@ export default function CyberThreatsPage() {
                 <CardContent>
                   <div className="text-sm font-medium flex items-center gap-1.5">
                     <Timer className="w-4 h-4 text-muted-foreground" />
-                    {t('threats.just_now', 'Just now')}
+                    {lastUpdateTimestamp ? lastUpdateTimestamp.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', second: '2-digit' }) : '--:--:--'}
                   </div>
                 </CardContent>
               </Card>
