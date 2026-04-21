@@ -51,14 +51,14 @@ export function ExpertPanel({ filterIp }: Props) {
       const targetEq = equipment.find((e: any) => e.ip_address === targetIp);
 
       if (targetEq) {
-        // Try simulation fix
+        // Try simulation fix (non-blocking - returns immediately)
         try {
           const simFixResponse = await fetch(`http://127.0.0.1:8000/api/v1/simulation/fix?equipment_id=${targetEq.id}`, {
             method: "POST",
           });
           const result = await simFixResponse.json();
           if (simFixResponse.ok && result.status === "success") {
-            setFixMessage(`Simulation fix applied: ${result.attack_type || 'Attack neutralized'}`);
+            setFixMessage(`Fix initiated: ${result.attack_type || 'Attack neutralized'}. Equipment recovering...`);
             setSelectedLog(null);
             fetchLogs();
             return;
@@ -83,7 +83,7 @@ export function ExpertPanel({ filterIp }: Props) {
       console.error("Error applying fix:", error);
       setFixMessage("Error applying fix");
     } finally {
-      setTimeout(() => setFixMessage(null), 3000);
+      setTimeout(() => setFixMessage(null), 5000);
       setIsFixing(false);
     }
   };

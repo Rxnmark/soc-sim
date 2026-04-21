@@ -63,7 +63,7 @@ class SimulationManager(SimulationCore):
     # User action: apply fix
     # ------------------------------------------------------------------
     async def apply_fix(self, equipment_id: int):
-        """Resolve an active attack on the given equipment."""
+        """Resolve an active attack on the given equipment (non-blocking)."""
         db = SessionLocal()
         try:
             attack_data = self.active_attacks.get(equipment_id)
@@ -71,79 +71,64 @@ class SimulationManager(SimulationCore):
             if not eq:
                 return {"status": "equipment_not_found"}
 
+            attack_type = None
+            recovery_time = STANDARD_REBOOT_SECONDS
+
             # If no simulation attack, fall back to legacy reboot
             if not attack_data:
-                eq.status = "Rebooting"
-                db.commit()
-                await asyncio.sleep(STANDARD_REBOOT_SECONDS)
-                eq = db.query(models.Equipment).filter(models.Equipment.id == equipment_id).first()
-                if eq:
-                    eq.status = "Online"
-                    db.commit()
+                attack_type = "legacy"
+            else:
+                attack_type = attack_data["type"]
+                self.blocked_ips.add(attack_data["source_ip"])
+                if attack_type == "Ransomware" and eq.status == "Encrypted":
+                    recovery_time = 30
 
-                # Resolve any unresolved risks for this equipment
+            # Set to Rebooting immediately
+            eq.status = "Rebooting"
+            db.commit()
+
+            # Resolve risks immediately
+            if attack_data:
+                risk = db.query(models.RiskAssessment).filter(
+                    models.RiskAssessment.id == attack_data["risk_id"]
+                ).first()
+                if risk:
+                    risk.is_resolved = True
+                if equipment_id in self.active_attacks:
+                    del self.active_attacks[equipment_id]
+                db.commit()
+            else:
                 db.query(models.RiskAssessment).filter(
                     models.RiskAssessment.equipment_id == equipment_id
                 ).update({"is_resolved": True})
                 db.commit()
 
-                await security_logs_collection.insert_one({
-                    "event_type": "Auto-Fix Applied",
-                    "description": f"Manual fix applied to {eq.name}.",
-                    "source_ip": eq.ip_address,
-                    "timestamp": datetime.now(timezone.utc),
-                })
+            # Start background recovery task (non-blocking)
+            asyncio.create_task(self._recovery_equipment(equipment_id, eq.name, attack_type, recovery_time))
 
-                return {"status": "success", "attack_type": "legacy"}
+            return {"status": "success", "attack_type": attack_type}
+        finally:
+            db.close()
 
-            attack_type = attack_data["type"]
-            self.blocked_ips.add(attack_data["source_ip"])
+    async def _recovery_equipment(self, equipment_id: int, eq_name: str, attack_type: str, recovery_seconds: float):
+        """Background task: wait for recovery time, then set equipment back to Online."""
+        await asyncio.sleep(recovery_seconds)
 
-            if attack_type == "Ransomware" and eq.status == "Encrypted":
-                eq.status = "Rebooting"
+        db = SessionLocal()
+        try:
+            eq = db.query(models.Equipment).filter(models.Equipment.id == equipment_id).first()
+            if eq and eq.status == "Rebooting":
+                eq.status = "Online"
                 db.commit()
-                await asyncio.sleep(30)
-                eq = db.query(models.Equipment).filter(models.Equipment.id == equipment_id).first()
-                if eq:
-                    eq.status = "Online"
-                    db.commit()
-            elif attack_type == "DDoS" and eq.status == "Offline":
-                eq.status = "Rebooting"
-                db.commit()
-                await asyncio.sleep(STANDARD_REBOOT_SECONDS)
-                eq = db.query(models.Equipment).filter(models.Equipment.id == equipment_id).first()
-                if eq:
-                    eq.status = "Online"
-                    db.commit()
-            else:
-                eq.status = "Rebooting"
-                db.commit()
-                await asyncio.sleep(STANDARD_REBOOT_SECONDS)
-                eq = db.query(models.Equipment).filter(models.Equipment.id == equipment_id).first()
-                if eq:
-                    eq.status = "Online"
-                    db.commit()
-
-            risk = db.query(models.RiskAssessment).filter(
-                models.RiskAssessment.id == attack_data["risk_id"]
-            ).first()
-            if risk:
-                risk.is_resolved = True
-                db.commit()
-
-            if equipment_id in self.active_attacks:
-                del self.active_attacks[equipment_id]
-
-            await self._update_topology_dependencies(db)
 
             await security_logs_collection.insert_one({
                 "event_type": "Auto-Fix Applied",
-                "description": f"Attack resolved on {eq.name} (IP: {attack_data['source_ip']}).",
-                "source_ip": attack_data["source_ip"],
+                "description": f"Equipment {eq_name} recovered after {attack_type} fix ({recovery_seconds}s).",
+                "source_ip": eq.ip_address if eq else "unknown",
                 "timestamp": datetime.now(timezone.utc),
             })
 
-            return {"status": "success", "attack_type": attack_type}
+            await self._update_topology_dependencies(db)
         finally:
             db.close()
 
