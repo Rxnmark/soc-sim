@@ -90,7 +90,7 @@ class SimulationCore:
             new_risk = models.RiskAssessment(
                 equipment_id=target_id,
                 risk_level=target.risk_level,
-                description=f"[SIM] {attack_type}: {description}",
+                description=f"{attack_type} detected on {target.name}: {description}",
                 is_resolved=False,
                 attack_type=attack_type,
                 financial_impact=0,
@@ -100,7 +100,7 @@ class SimulationCore:
             db.commit()
 
             await security_logs_collection.insert_one({
-                "event_type": f"[SIM] {attack_type}",
+                "event_type": attack_type,
                 "description": description,
                 "source_ip": source_ip,
                 "timestamp": timestamp,
@@ -155,7 +155,7 @@ class SimulationCore:
                     models.RiskAssessment.id == attack_data["risk_id"]
                 ).first()
                 if risk:
-                    risk.description = f"[SIM] Ransomware: ENCRYPTED - {risk.description}"
+                    risk.description = f"CRITICAL: {risk.description} - Files encrypted"
                 db.commit()
 
                 await asyncio.sleep(ransomware_config["encrypted_recovery_seconds"])

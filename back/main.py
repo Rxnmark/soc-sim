@@ -121,11 +121,15 @@ async def create_security_log(log: SecurityLog, db: Session = Depends(get_db)):
     if "unauthorized" in event_lower or "attack" in event_lower or "scan" in event_lower:
         eq = db.query(models.Equipment).filter(models.Equipment.ip_address == log.source_ip).first()
         if eq:
-            # Перевіряємо, чи немає вже активної загрози, щоб не дублювати
+            # Перевіряємо, чи немає вже активної загрози (або це симуляція), щоб не дублювати
             active_risk = db.query(models.RiskAssessment).filter(
                 models.RiskAssessment.equipment_id == eq.id,
                 models.RiskAssessment.is_resolved == False
             ).first()
+            
+            # Не створювати новий ризик якщо є активна симуляційна атака
+            if simulation_manager.active_attacks.get(eq.id):
+                return {"message": "Log saved", "id": str(result.inserted_id)}
             
             if not active_risk:
                 new_risk = models.RiskAssessment(
