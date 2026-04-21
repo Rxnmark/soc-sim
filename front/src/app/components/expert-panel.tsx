@@ -45,7 +45,10 @@ export function ExpertPanel({ filterIp }: Props) {
       // Try simulation fix first (by equipment ID from IP)
       const eqResponse = await fetch("http://127.0.0.1:8000/api/v1/equipment");
       const equipment = await eqResponse.json();
-      const targetEq = equipment.find((e: any) => e.ip_address === selectedLog.source_ip);
+      
+      // Use target_ip if available (simulation attacks), otherwise use source_ip
+      const targetIp = selectedLog.target_ip || selectedLog.source_ip;
+      const targetEq = equipment.find((e: any) => e.ip_address === targetIp);
 
       if (targetEq) {
         // Try simulation fix

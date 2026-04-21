@@ -103,6 +103,7 @@ class SimulationCore:
                 "event_type": attack_type,
                 "description": description,
                 "source_ip": source_ip,
+                "target_ip": target.ip_address,
                 "timestamp": timestamp,
             })
 
