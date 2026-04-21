@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { Terminal, Clock, Network, CheckCircle2, XCircle, ArrowLeft, FilterX, ShieldAlert } from "lucide-react";
+import { Terminal, Clock, Network, CheckCircle2, XCircle, ArrowLeft, FilterX, ShieldAlert, Sword } from "lucide-react";
 import { Button } from "./ui/button";
 import { Badge } from "./ui/badge";
 import { Card } from "./ui/card";
@@ -16,6 +16,7 @@ export function ExpertPanel({ filterIp }: Props) {
   const [loading, setLoading] = useState(true);
   const [selectedLog, setSelectedLog] = useState<any | null>(null);
   const [isFixing, setIsFixing] = useState(false);
+  const [fixMessage, setFixMessage] = useState<string | null>(null);
 
   const fetchLogs = () => {
     fetch("http://127.0.0.1:8000/api/v1/logs")
@@ -38,19 +39,48 @@ export function ExpertPanel({ filterIp }: Props) {
   const handleApplyFix = async () => {
     if (!selectedLog) return;
     setIsFixing(true);
+    setFixMessage(null);
 
     try {
+      // Try simulation fix first (by equipment ID from IP)
+      const eqResponse = await fetch("http://127.0.0.1:8000/api/v1/equipment");
+      const equipment = await eqResponse.json();
+      const targetEq = equipment.find((e: any) => e.ip_address === selectedLog.source_ip);
+
+      if (targetEq) {
+        // Try simulation fix
+        try {
+          const simFixResponse = await fetch(`http://127.0.0.1:8000/api/v1/simulation/fix?equipment_id=${targetEq.id}`, {
+            method: "POST",
+          });
+          if (simFixResponse.ok) {
+            const result = await simFixResponse.json();
+            setFixMessage(`Simulation fix applied: ${result.attack_type || 'Attack neutralized'}`);
+            setSelectedLog(null);
+            fetchLogs();
+            return;
+          }
+        } catch (simError) {
+          // Simulation fix failed, fall back to legacy fix
+          console.log("Simulation fix failed, using legacy fix");
+        }
+      }
+
+      // Legacy fix
       await fetch("http://127.0.0.1:8000/api/v1/actions/block", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ source_ip: selectedLog.source_ip })
       });
       
+      setFixMessage("Legacy fix applied");
       setSelectedLog(null);
       fetchLogs();
     } catch (error) {
       console.error("Error applying fix:", error);
+      setFixMessage("Error applying fix");
     } finally {
+      setTimeout(() => setFixMessage(null), 3000);
       setIsFixing(false);
     }
   };
@@ -165,6 +195,13 @@ export function ExpertPanel({ filterIp }: Props) {
         </div>
 
         <div className="space-y-3 pt-5 border-t border-border mt-auto shrink-0">
+          {/* Fix status message */}
+          {fixMessage && (
+            <div className="p-2 rounded-md bg-emerald-500/10 border border-emerald-500/20 text-center">
+              <p className="text-xs text-emerald-500 font-medium">{fixMessage}</p>
+            </div>
+          )}
+
           {isResolved ? (
             <Button disabled className="w-full bg-muted/50 text-muted-foreground font-semibold cursor-not-allowed border border-border">
               <CheckCircle2 className="w-4 h-4 mr-2" />
@@ -176,8 +213,17 @@ export function ExpertPanel({ filterIp }: Props) {
               disabled={isFixing}
               className="w-full bg-gradient-to-r from-emerald-600 to-teal-600 hover:from-emerald-700 hover:to-teal-700 text-white font-semibold transition-all"
             >
-              <CheckCircle2 className="w-4 h-4 mr-2" />
-              {isFixing ? t('logs.applying_fix', 'Applying Fix...') : t('logs.apply_fix', 'Apply Fix Automatically')}
+              {isFixing ? (
+                <>
+                  <span className="animate-spin mr-2"><CheckCircle2 className="w-4 h-4" /></span>
+                  {t('logs.applying_fix', 'Applying Fix...')}
+                </>
+              ) : (
+                <>
+                  <Sword className="w-4 h-4 mr-2" />
+                  {t('logs.fix_simulation_attack', 'Neutralize Threat')}
+                </>
+              )}
             </Button>
           )}
           

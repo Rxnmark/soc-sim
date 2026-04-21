@@ -3,13 +3,14 @@ import { Sidebar } from "../components/sidebar-nav";
 import { EquipmentTable } from "../components/equipment-table";
 import { ExpertPanel } from "../components/expert-panel";
 import { Card } from "../components/ui/card";
-import { AlertTriangle, Shield, ServerOff } from "lucide-react";
+import { AlertTriangle, Shield, ServerOff, DollarSign, Zap } from "lucide-react";
 import { NotificationsPopover } from "../components/notifications-popover";
 import { useTranslation } from "../../context/LanguageContext";
 
 export default function CybersecurityDashboard() {
   const { t } = useTranslation();
   const [apiData, setApiData] = useState<any>(null);
+  const [simStatus, setSimStatus] = useState<any>(null);
   const [filterIp, setFilterIp] = useState<string | null>(null);
 
   const fetchSummary = () => {
@@ -17,6 +18,13 @@ export default function CybersecurityDashboard() {
       .then((res) => res.json())
       .then((data) => setApiData(data))
       .catch((err) => console.error("Error fetching data:", err));
+  };
+
+  const fetchSimStatus = () => {
+    fetch("http://127.0.0.1:8000/api/v1/simulation/status")
+      .then((res) => res.json())
+      .then((data) => setSimStatus(data))
+      .catch((err) => console.error("Error fetching sim status:", err));
   };
 
   useEffect(() => {
@@ -32,8 +40,13 @@ export default function CybersecurityDashboard() {
     }
     
     fetchSummary();
-    const interval = setInterval(fetchSummary, 5000);
-    return () => clearInterval(interval);
+    fetchSimStatus();
+    const dataInterval = setInterval(fetchSummary, 5000);
+    const simInterval = setInterval(fetchSimStatus, 5000);
+    return () => {
+      clearInterval(dataInterval);
+      clearInterval(simInterval);
+    };
   }, []);
 
   return (
@@ -47,6 +60,25 @@ export default function CybersecurityDashboard() {
           </div>
           <div className="flex items-center gap-4">
             <NotificationsPopover apiData={apiData} />
+
+            {/* Simulation Status Indicator */}
+            {simStatus?.is_running && (
+              <div className={`flex items-center gap-2 px-3 py-2 rounded-lg border ${
+                simStatus.phase === "escalated" 
+                  ? "bg-red-500/10 border-red-500/20 shadow-[0_0_10px_rgba(239,68,68,0.2)]" 
+                  : "bg-amber-500/10 border-amber-500/20"
+              }`}>
+                <Zap className={`w-4 h-4 ${simStatus.phase === "escalated" ? "text-red-500 animate-pulse" : "text-amber-500"}`} />
+                <div className="flex flex-col items-start">
+                  <span className={`text-xs font-medium ${simStatus.phase === "escalated" ? "text-red-500" : "text-amber-500"}`}>
+                    {simStatus.phase === "escalated" ? t('dashboard.simulation_escalated', 'Escalation') : t('dashboard.simulation_normal', 'Normal')}
+                  </span>
+                  <span className="text-[10px] text-muted-foreground">
+                    {simStatus.active_attacks_count > 0 ? `${simStatus.active_attacks_count} active` : 'No attacks'}
+                  </span>
+                </div>
+              </div>
+            )}
 
             {apiData?.critical_threats > 0 ? (
               <div className="flex items-center gap-2 px-3 py-2 rounded-lg bg-red-500/10 border border-red-500/20 shadow-[0_0_10px_rgba(239,68,68,0.2)]">
@@ -119,6 +151,33 @@ export default function CybersecurityDashboard() {
                   </div>
                   <div className="flex items-center gap-2">
                     <span className="text-xs text-muted-foreground">{t('dashboard.maintenance_mode', 'Maintenance mode')}</span>
+                  </div>
+                </Card>
+
+                <Card className="p-6 bg-card border-border border-lime-500/30">
+                  <div className="flex items-start justify-between mb-3">
+                    <div>
+                      <p className="text-xs text-muted-foreground mb-1">{t('dashboard.financial_exposure_card', 'Financial Exposure')}</p>
+                      <p className="text-2xl text-lime-500 font-semibold">
+                        {apiData ? apiData.financial_exposure : "$0"}
+                      </p>
+                    </div>
+                    <div className="w-10 h-10 rounded-lg bg-lime-500/10 flex items-center justify-center">
+                      <DollarSign className="w-5 h-5 text-lime-500" />
+                    </div>
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <span className="text-[10px] text-muted-foreground">
+                      {simStatus?.is_running ? (
+                        <span className="flex items-center gap-1">
+                          <span className="relative flex h-1.5 w-1.5">
+                            <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-lime-400 opacity-75"></span>
+                            <span className="relative inline-flex rounded-full h-1.5 w-1.5 bg-lime-500"></span>
+                          </span>
+                          Live
+                        </span>
+                      ) : "Simulation inactive"}
+                    </span>
                   </div>
                 </Card>
               </div>

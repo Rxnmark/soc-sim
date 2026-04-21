@@ -1,113 +1,18 @@
 import asyncio
 from datetime import datetime, timezone
-from fastapi import FastAPI, Depends, BackgroundTasks
+from fastapi import FastAPI, Depends, BackgroundTasks, Query
 from fastapi.middleware.cors import CORSMiddleware
 from sqlalchemy.orm import Session
-from pydantic import BaseModel
 import models
 from database import engine, Base, get_db, SessionLocal, security_logs_collection
-import random
+from schemas import ThreatResponse, SecurityLog, FixRequest, SimulationStatus, FixResponse
+from threats import generate_random_threat
+from simulation import SimulationManager
+
+# Global simulation manager instance
+simulation_manager = SimulationManager()
 
 app = FastAPI()
-
-# --- SCHEMAS ---
-class ThreatCreate(BaseModel):
-    title: str
-    description: str
-    type: str
-    severity: str
-
-class ThreatResponse(BaseModel):
-    id: int
-    title: str
-    description: str
-    type: str
-    severity: str
-    category: str
-    timestamp: datetime
-
-    class Config:
-        from_attributes = True
-
-# --- UTILS FOR GAME MECHANIC ---
-def generate_random_threat(db: Session):
-    """Generates a random threat categorized as Warning, Active, or Critical."""
-    warning_threats = [
-        {"type": "Port Scan", "severity": "Low", "category": "Warning",
-         "title": "Позадовільне сканування мережі",
-         "description": "Виявлено сканування портів зовнішнім джерелом, розвідка перед атакою"},
-        {"type": "Reconnaissance", "severity": "Low", "category": "Warning",
-         "title": "Розвідувальна активність виявлена",
-         "description": "Підозріла активність збору інформації про інфраструктуру"},
-        {"type": "Policy Violation", "severity": "Low", "category": "Warning",
-         "title": "Порушення політики безпеки",
-         "description": "Виявлено відхилення від базової політики безпеки"},
-        {"type": "Outdated Signature", "severity": "Low", "category": "Warning",
-         "title": "Застарілі сигнатури антивіруса",
-         "description": "База даних сигнатур антивіруса застаріла і потребує оновлення"},
-        {"type": "Config Drift", "severity": "Low", "category": "Warning",
-         "title": "Зміна конфігурації виявлена",
-         "description": "Конфігурація безпеки відхилилася від базової політики"},
-    ]
-    active_threats = [
-        {"type": "DDoS", "severity": "High", "category": "Active",
-         "title": "DDoS-атака в прогресі",
-         "description": "Автоматичне виявлення трафіку DDoS-атаки, спрямованого на внутрішні сегменти"},
-        {"type": "Brute-force", "severity": "High", "category": "Active",
-         "title": "Brute-force атака в прогресі",
-         "description": "Автоматичне виявлення активності brute-force атаки, спрямованої на внутрішні сегменти"},
-        {"type": "SQL Injection", "severity": "High", "category": "Active",
-         "title": "SQL-ін'єкція виявлена",
-         "description": "Спроба SQL-ін'єкції, спрямована на бази даних через поля форм"},
-        {"type": "Phishing", "severity": "High", "category": "Active",
-         "title": "Фішингова кампанія виявлена",
-         "description": "Виящено підозрілі шаблони електронних листів для викрадення облікових даних"},
-        {"type": "Malware", "severity": "High", "category": "Active",
-         "title": "Виявлено шкідливе ПЗ",
-         "description": "Виявлено активність шкідливого ПЗ на системі"},
-    ]
-    critical_threats = [
-        {"type": "Ransomware", "severity": "Critical", "category": "Critical",
-         "title": "Ransomware активність виявлена",
-         "description": "Виявлено активність шифрування ransomware - критичні файли можуть бути під загрозою"},
-        {"type": "Data Exfiltration", "severity": "Critical", "category": "Critical",
-         "title": "Витоку даних виявлено",
-         "description": "Несанкціонований вихід критичних даних за межі мережі виявлено"},
-        {"type": "APT", "severity": "Critical", "category": "Critical",
-         "title": "APT-активність виявлена",
-         "description": "Підозріла повільна активність, що вказує на цільову атаку високого рівня"},
-        {"type": "Zero-day", "severity": "Critical", "category": "Critical",
-         "title": "Zero-day вразливість експлуатується",
-         "description": "Виявлено експлуатацію невідомої вразливості в реальних умовах"},
-        {"type": "Lateral Movement", "severity": "Critical", "category": "Critical",
-         "title": "Бічного переміщення виявлено",
-         "description": "Несанкціоноване переміщення між системами в межах мережі"},
-    ]
-    
-    # Вибігаємо категорію з вагами (40% Warning, 40% Active, 20% Critical)
-    category_weights = random.choices(["Warning", "Active", "Critical"], weights=[40, 40, 20])[0]
-    if category_weights == "Warning":
-        threat_pool = warning_threats
-    elif category_weights == "Active":
-        threat_pool = active_threats
-    else:
-        threat_pool = critical_threats
-    
-    selected = random.choice(threat_pool)
-    
-    new_threat = models.Threat(
-        title=selected["title"],
-        description=selected["description"],
-        type=selected["type"],
-        severity=selected["severity"],
-        category=selected["category"],
-        timestamp=datetime.now(timezone.utc)
-    )
-    db.add(new_threat)
-    db.commit()
-    db.refresh(new_threat)
-    return new_threat
-
 
 app.add_middleware(
     CORSMiddleware,
@@ -120,28 +25,38 @@ app.add_middleware(
 # --- 1. СТАТИСТИКА (ОНОВЛЕНА ДЛЯ ОБИДВОХ ДАШБОРДІВ) ---
 @app.get("/api/v1/risks/summary")
 def get_risk_summary(db: Session = Depends(get_db)):
-    # Дані для Cybersecurity Dashboard
+    # Data for Cybersecurity Dashboard
     sensors_offline = db.query(models.Equipment).filter(models.Equipment.status != "Online").count()
-    critical_threats = db.query(models.RiskAssessment).filter(models.RiskAssessment.risk_level == "Critical", models.RiskAssessment.is_resolved == False).count()
-    medium_risks = db.query(models.RiskAssessment).filter(models.RiskAssessment.risk_level == "Medium", models.RiskAssessment.is_resolved == False).count()
+    critical_threats = db.query(models.RiskAssessment).filter(
+        models.RiskAssessment.risk_level == "Critical", 
+        models.RiskAssessment.is_resolved == False
+    ).count()
+    medium_risks = db.query(models.RiskAssessment).filter(
+        models.RiskAssessment.risk_level == "Medium", 
+        models.RiskAssessment.is_resolved == False
+    ).count()
     
-    # Дані для Risk Management Dashboard
+    # Data for Risk Management Dashboard
     total_business_risks = db.query(models.BusinessRisk).count()
     mitigated_risks = db.query(models.BusinessRisk).filter(models.BusinessRisk.status == "Mitigated").count()
     
-    # Рахуємо відсоток вирішених ризиків (Mitigation Rate)
+    # Calculate mitigation rate
     if total_business_risks > 0:
         mitigation_rate = int((mitigated_risks / total_business_risks) * 100)
     else:
         mitigation_rate = 0
 
+    # Get numeric financial exposure from simulation
+    financial_exposure = simulation_manager.financial_exposure if simulation_manager.is_running else 0.0
+
     return {
         "critical_threats": critical_threats,
         "medium_risks": medium_risks,
         "sensors_offline": sensors_offline,
-        "financial_exposure": "$8.85M",
-        "total_risks": total_business_risks,     # НОВЕ
-        "mitigation_rate": mitigation_rate       # НОВЕ
+        "financial_exposure": f"${financial_exposure / 1000000:.2f}M" if financial_exposure >= 1000000 else f"${financial_exposure:,.0f}",
+        "financial_exposure_numeric": financial_exposure,
+        "total_risks": total_business_risks,
+        "mitigation_rate": mitigation_rate
     }
 
 
@@ -162,14 +77,20 @@ def get_all_equipment(db: Session = Depends(get_db)):
             .order_by(models.RiskAssessment.risk_level.desc())\
             .first()
             
+        # Get financial impact for this equipment
+        financial_impact = 0
+        if highest_risk:
+            financial_impact = highest_risk.financial_impact if hasattr(highest_risk, 'financial_impact') else 0
+            
         result.append({
             "id": eq.id,
             "name": eq.name,
             "type": eq.type,
             "ip_address": eq.ip_address,
-            "status": eq.status, # Віддаємо реальний статус
+            "status": eq.status,
             "risk_level": highest_risk.risk_level if highest_risk else "Safe",
-            "parent_id": eq.parent_id
+            "parent_id": eq.parent_id,
+            "financial_impact": financial_impact
         })
     return result
 
@@ -187,12 +108,6 @@ def read_threats(db: Session = Depends(get_db)):
 def simulate_threat(db: Session = Depends(get_db)):
     """Endpoint to manually trigger a new threat for testing."""
     return generate_random_threat(db)
-
-# --- 4. ЛОГИ (Без змін) ---
-class SecurityLog(BaseModel):
-    event_type: str
-    description: str
-    source_ip: str
 
 @app.post("/api/v1/logs")
 async def create_security_log(log: SecurityLog, db: Session = Depends(get_db)):
@@ -244,24 +159,19 @@ async def reboot_equipment(equipment_id: int):
     finally:
         db.close()
 
-class FixRequest(BaseModel):
-    source_ip: str
-
 @app.post("/api/v1/actions/block")
 async def apply_auto_fix(request: FixRequest, background_tasks: BackgroundTasks, db: Session = Depends(get_db)):
+    """Legacy endpoint - finds equipment by IP and reboots it."""
     equipment = db.query(models.Equipment).filter(models.Equipment.ip_address == request.source_ip).first()
     
     if equipment:
-        equipment.status = "Rebooting" # Ставимо статус перезавантаження
-        
-        # МАГІЯ: Позначаємо всі загрози для цього обладнання як вирішені!
+        equipment.status = "Rebooting"
         db.query(models.RiskAssessment).filter(models.RiskAssessment.equipment_id == equipment.id).update({"is_resolved": True})
         db.commit()
-        
-        target_name = f"внутрішнього пристрою {equipment.name}"
+        target_name = f"внутрiшнього пристрою {equipment.name}"
         background_tasks.add_task(reboot_equipment, equipment.id)
     else:
-        target_name = "зовнішнього атакуючого"
+        target_name = "зовнiшнього атакуючого"
 
     await security_logs_collection.insert_one({
         "event_type": "Auto-Fix Applied",
@@ -272,13 +182,54 @@ async def apply_auto_fix(request: FixRequest, background_tasks: BackgroundTasks,
     
     return {"status": "success"}
 
+# ------------------------------------------------------------------
+# NEW: Simulation game endpoints
+# ------------------------------------------------------------------
+@app.get("/api/v1/simulation/status", response_model=SimulationStatus)
+def get_simulation_status():
+    """Returns current simulation state."""
+    return simulation_manager.get_status()
+
+@app.post("/api/v1/simulation/fix")
+async def apply_simulation_fix(equipment_id: int = Query(..., alias="equipment_id"), db: Session = Depends(get_db)):
+    """Resolve an active simulation attack on the given equipment."""
+    result = await simulation_manager.apply_fix(equipment_id)
+    
+    # Also update DB if it was a simulation attack
+    if result["status"] == "success":
+        eq = db.query(models.Equipment).filter(models.Equipment.id == equipment_id).first()
+        if eq:
+            # Log the fix
+            await security_logs_collection.insert_one({
+                "event_type": "Simulation Fix Applied",
+                "description": f"User resolved {result.get('attack_type', 'attack')} on {eq.name}.",
+                "source_ip": eq.ip_address,
+                "timestamp": datetime.now(timezone.utc)
+            })
+    
+    return result
+
+@app.post("/api/v1/simulation/start")
+async def start_simulation():
+    """Start the simulation game."""
+    await simulation_manager.start()
+    return {"status": "started"}
+
+@app.post("/api/v1/simulation/stop")
+async def stop_simulation():
+    """Stop the simulation game."""
+    simulation_manager.stop()
+    return {"status": "stopped"}
+
 # --- 6. МАРШРУТ ДЛЯ ОНОВЛЕННЯ БАЗИ ДАНИХ ---
 @app.post("/api/v1/reset")
-async def reset_database(db: Session = Depends(get_db)): # Додали async
+async def reset_database(db: Session = Depends(get_db)):
+    """Reset database AND start the simulation game."""
+    # Reset DB tables
     models.Base.metadata.drop_all(bind=engine)
     models.Base.metadata.create_all(bind=engine)
 
-    # 20 ОДИНИЦЬ ОБЛАДНАННЯ ДЛЯ СИМЕТРИЧНОЇ СІТКИ
+    # 20 units of equipment for symmetric grid
     equipment_data = [
         {"name": "Main Gateway Router", "type": "Network", "ip_address": "192.168.1.1", "status": "Online"},
         {"name": "Core Switch Alpha", "type": "Network", "ip_address": "192.168.1.2", "status": "Online"},
@@ -310,14 +261,10 @@ async def reset_database(db: Session = Depends(get_db)): # Додали async
     
     db.commit()
 
-    # Стартові інциденти для PostgreSQL (прив'язані до конкретного обладнання)
-    risk1 = models.RiskAssessment(equipment_id=eq_objects[5].id, risk_level="Critical", description="DDoS Attack Detected", is_resolved=False)
-    risk2 = models.RiskAssessment(equipment_id=eq_objects[7].id, risk_level="Critical", description="Unauthorized Modbus command", is_resolved=False)
-    risk3 = models.RiskAssessment(equipment_id=eq_objects[15].id, risk_level="Medium", description="Outdated Antivirus Signature", is_resolved=False)
-    db.add_all([risk1, risk2, risk3])
-    db.commit()
+    # No initial risks - clean slate for simulation
+    # (Old initial risks removed for clean simulation start)
 
-    # Бізнес-ризики
+    # Business risks
     br1 = models.BusinessRisk(title="Ransomware Attack on SCADA", category="Cyber", probability=3, impact=5, status="Open")
     br2 = models.BusinessRisk(title="Supply Chain Disruption", category="Operational", probability=4, impact=4, status="In Progress")
     br3 = models.BusinessRisk(title="Regulatory Compliance Fine", category="Financial", probability=2, impact=3, status="Mitigated")
@@ -326,28 +273,19 @@ async def reset_database(db: Session = Depends(get_db)): # Додали async
     db.add_all([br1, br2, br3, br4, br5])
     db.commit()
 
-    # ОЧИЩАЄМО СТАРІ ТА ГЕНЕРУЄМО НОВІ ЛОГИ ДЛЯ MONGODB
+    # Clear and generate fresh logs for MongoDB
     await security_logs_collection.delete_many({})
     initial_logs = [
         {
-            "event_type": "DDoS Attack",
-            "description": "Massive incoming traffic flood detected targeting Web Server Prod-1.",
-            "source_ip": "192.168.2.15",
-            "timestamp": datetime.now(timezone.utc)
-        },
-        {
-            "event_type": "Unauthorized Access",
-            "description": "Unauthorized Modbus command execution attempt on SCADA Unit A.",
-            "source_ip": "10.0.0.5",
-            "timestamp": datetime.now(timezone.utc)
-        },
-        {
-            "event_type": "Security Warning",
-            "description": "Outdated Antivirus Signature detected on CEO Workstation.",
-            "source_ip": "192.168.5.10",
+            "event_type": "System Ready",
+            "description": "Simulation game initialized. All systems online.",
+            "source_ip": "192.168.1.1",
             "timestamp": datetime.now(timezone.utc)
         }
     ]
     await security_logs_collection.insert_many(initial_logs)
 
-    return {"message": "Базу даних успішно оновлено! Додано 20 одиниць обладнання та згенеровано стартові логи."}
+    # Start the simulation engine
+    await simulation_manager.start()
+
+    return {"message": "Database reset! Simulation game started. Attacks will begin shortly."}

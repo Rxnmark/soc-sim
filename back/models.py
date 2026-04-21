@@ -22,6 +22,9 @@ class RiskAssessment(Base):
     risk_level = Column(String)   
     description = Column(String)
     is_resolved = Column(Boolean, default=False)
+    attack_type = Column(String, nullable=True)  # DDoS, Stealth, Ransomware
+    financial_impact = Column(Integer, default=0)  # Dollar amount from stealth attacks
+    created_at = Column(DateTime, default=datetime.datetime.utcnow)  # When attack started
 
 # --- НОВА ТАБЛИЦЯ ДЛЯ RISK MANAGEMENT DASHBOARD ---
 class BusinessRisk(Base):

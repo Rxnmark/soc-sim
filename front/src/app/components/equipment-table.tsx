@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { Server, ShieldAlert, CheckCircle2, XCircle, RefreshCw, Filter, Search } from "lucide-react";
+import { Server, ShieldAlert, CheckCircle2, XCircle, RefreshCw, Filter, Search, Lock, WifiOff } from "lucide-react";
 import { useTranslation } from "../../context/LanguageContext";
 
 interface Props {
@@ -81,7 +81,7 @@ export function EquipmentTable({ filterIp, setFilterIp }: Props) {
               <tr><td colSpan={6} className="px-6 py-8 text-center text-muted-foreground">{t('equipment.not_found', 'No equipment found')}</td></tr>
             ) : (
               filteredAndSortedEquipment.map((eq) => (
-                <tr key={eq.id} className={`border-b border-border last:border-0 hover:bg-muted/10 transition-colors ${filterIp === eq.ip_address ? 'bg-primary/5' : ''}`}>
+                <tr key={eq.id} className={`border-b border-border last:border-0 transition-colors ${filterIp === eq.ip_address ? 'bg-primary/5' : ''} ${eq.status === 'Unreachable' ? 'opacity-50' : 'hover:bg-muted/10'} ${eq.status === 'Encrypted' ? 'bg-red-950/20' : ''}`}>
                   <td className="px-6 py-4 flex items-center gap-3">
                     <div className="w-8 h-8 rounded bg-primary/10 flex items-center justify-center text-primary shrink-0">
                       <Server className="w-4 h-4" />
@@ -95,6 +95,10 @@ export function EquipmentTable({ filterIp, setFilterIp }: Props) {
                       <span className="flex items-center gap-1.5 text-emerald-500 bg-emerald-500/10 px-2 py-1 rounded-md w-fit text-xs font-medium"><CheckCircle2 className="w-3.5 h-3.5" /> {t('equipment.status_online', 'Online')}</span>
                     ) : eq.status === "Rebooting" ? (
                       <span className="flex items-center gap-1.5 text-blue-500 bg-blue-500/10 px-2 py-1 rounded-md w-fit text-xs font-medium border border-blue-500/20"><RefreshCw className="w-3.5 h-3.5 animate-spin" /> {t('equipment.status_rebooting', 'Rebooting')}</span>
+                    ) : eq.status === "Encrypted" ? (
+                      <span className="flex items-center gap-1.5 text-red-600 bg-red-600/20 px-2 py-1 rounded-md w-fit text-xs font-bold border border-red-600/30 animate-pulse"><Lock className="w-3.5 h-3.5" /> {t('equipment.status_encrypted', 'ENCRYPTED')}</span>
+                    ) : eq.status === "Unreachable" ? (
+                      <span className="flex items-center gap-1.5 text-gray-400 bg-gray-400/10 px-2 py-1 rounded-md w-fit text-xs font-medium opacity-60"><WifiOff className="w-3.5 h-3.5" /> {t('equipment.status_unreachable', 'Unreachable')}</span>
                     ) : (
                       <span className="flex items-center gap-1.5 text-gray-500 bg-gray-500/10 px-2 py-1 rounded-md w-fit text-xs font-medium"><XCircle className="w-3.5 h-3.5" /> {t('equipment.status_offline', 'Offline')}</span>
                     )}
