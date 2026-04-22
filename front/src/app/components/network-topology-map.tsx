@@ -40,21 +40,21 @@ const TopologyNode = ({ data }: any) => {
         : "bg-emerald-500/20 text-emerald-500";
 
   return (
-    <div className={`px-4 py-3 rounded-xl border shadow-lg bg-card min-w-[180px] transition-all ${
+    <div className={`px-5 py-4 rounded-xl border shadow-lg bg-card min-w-[280px] max-w-[320px] transition-all ${
       isCritical ? 'border-red-500/50 shadow-red-500/10' : 
       isMedium ? 'border-yellow-500/50 shadow-yellow-500/10' :
       isOffline ? 'border-dashed border-gray-500/50 opacity-70 grayscale' : 
       'border-border'
     }`}>
-      <Handle type="target" position={Position.Top} className="w-2 h-2 !bg-primary" />
+      <Handle type="target" position={Position.Top} className="w-3 h-3 !bg-primary" />
       
       <div className="flex items-center gap-3">
         <div className={`p-2 rounded-lg ${iconBgClass}`}>
           {getIcon(data.type)}
         </div>
         <div className="flex flex-col overflow-hidden">
-          <span className="text-sm font-semibold text-foreground truncate">{data.name}</span>
-          <span className="text-[10px] text-muted-foreground uppercase tracking-wider">{data.status}</span>
+          <span className="text-base font-semibold text-foreground truncate">{data.name}</span>
+          <span className="text-xs text-muted-foreground uppercase tracking-wider">{data.status}</span>
         </div>
       </div>
 
@@ -70,7 +70,7 @@ const TopologyNode = ({ data }: any) => {
         </div>
       )}
 
-      <Handle type="source" position={Position.Bottom} className="w-2 h-2 !bg-primary" />
+      <Handle type="source" position={Position.Bottom} className="w-3 h-3 !bg-primary" />
     </div>
   );
 };
