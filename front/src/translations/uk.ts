@@ -250,7 +250,11 @@ export const uk = {
     udp_flood_detected: "UDP Flood атака",
     udp_flood_desc: "Масовий надсилання UDP-пакетів для перевантаження мережевого обладнання",
     dns_amplification_detected: "DNS Amplification атака",
-    dns_amplification_desc: "Використання DNS-серверів для розширення трафіку атаки"
+    dns_amplification_desc: "Використання DNS-серверів для розширення трафіку атаки",
+    ntp_amplification_detected: "NTP Amplification атака",
+    ntp_amplification_desc: "Використання NTP-серверів для розширення трафіку атаки через NTP монстрацію",
+    http_flood_detected: "HTTP Flood атака",
+    http_flood_desc: "Масове надсилання легітимних HTTP-запитів для виснаження ресурсів веб-сервера"
   }
 };
 

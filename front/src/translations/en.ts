@@ -246,7 +246,11 @@ export const en = {
     udp_flood_detected: "UDP Flood Attack",
     udp_flood_desc: "Massive UDP packet flooding to overwhelm network equipment",
     dns_amplification_detected: "DNS Amplification Attack",
-    dns_amplification_desc: "Exploiting DNS servers to amplify attack traffic"
+    dns_amplification_desc: "Exploiting DNS servers to amplify attack traffic",
+    ntp_amplification_detected: "NTP Amplification Attack",
+    ntp_amplification_desc: "Exploiting NTP servers to amplify attack traffic via NTP moncast",
+    http_flood_detected: "HTTP Flood Attack",
+    http_flood_desc: "Massive legitimate HTTP requests flooding to exhaust web server resources"
   }
 };
 export default en;

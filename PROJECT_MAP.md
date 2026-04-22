@@ -14,13 +14,16 @@
 ### Backend (`back/`)
 | File | Description |
 |------|-------------|
-| `back/main.py` | Основний FastAPI додаток. Містить API маршрути для загроз, обладнання, логів, бізнес-ризиків, симуляції атак та експертної системи. Ініціалізація БД при reset. |
+| `back/main.py` | Основний FastAPI додаток. Містить API маршрути для загроз, обладнання, логів, бізнес-ризиків. Викликає `register_simulation_routes(app)` для реєстрації симуляційних ендпоїнтів. Ініціалізація БД при reset. |
+| `back/main_routes.py` | Ендпоїнти статистики загроз: `get_threat_statistics()`, `archive_threat()`, `get_archived_threats()`. |
+| `back/simulation_endpoints.py` | **Симуляційні API-ендпоїнти**: `register_simulation_routes(app)` — реєструє `/api/v1/simulation/*` (status, fix, start, stop) та `/api/v1/actions/block` (auto-fix). |
 | `back/models.py` | SQLAlchemy моделі: `Equipment` (обладнання з ієрархією), `RiskAssessment` (оцінки ризиків), `BusinessRisk` (бізнес-ризики), `Threat` (загрози). |
 | `back/schemas.py` | Pydantic схеми для валідації API відповідей: `ThreatResponse`, `SecurityLog`, `FixRequest`, `SimulationStatus`, `FixResponse`. |
 | `back/threats.py` | База загроз з трьома категоріями: `warning_threats` (Port Scan, Reconnaissance, Policy Violation тощо), `active_threats` (DDoS, Brute-force, SQL Injection, Phishing, Malware), `critical_threats` (Ransomware, Data Exfiltration, APT, Zero-day, Lateral Movement). Функція `generate_random_threat()` для створення випадкової загрози. |
 | `back/attack_definitions.py` | Конфігурація атак: `SIMULATION_ATTACKS` (DDoS з підтипами: Traffic Flood, SYN Flood, NTP Amplification, DNS Amplification, Slowloris, HTTP Flood, UDP Flood; Stealth; Ransomware), `CRITICAL_GATEWAY_IDS`, константи часу. |
 | `back/simulation_core.py` | **SimulationCore** — асинхронна логіка гри: `_game_loop()`, `_spawn_attack()`, `_schedule_ransomware_encryption()`, `_apply_stealth_financial_impact()`, `_update_topology_dependencies()` (каскадна ескалація offline-статусу для IoT/Endpoint пристроїв), `_random_delay()`, `_pick_attack_type()`, `_generate_unique_ip()`, `_all_equipment_down()`. |
 | `back/simulation.py` | **SimulationManager** (наспадник SimulationCore) — управління життєвим циклом: `start()`, `stop()`, `apply_fix()` (non-blocking з `_recovery_equipment()` фоновим завданням), `get_status()`. Після відновлення обладнання викликає `_update_topology_dependencies` для перерахунку статусів дочірніх пристроїв. |
+| `back/simulation_topology.py` | **Топологія залежностей**: `TOPOLOGY_CONNECTIONS` — explicit connections між пристроями; `get_connected_devices()`, `get_parent()`, `get_children()`, `get_ancestors()`, `get_descendants()`, `get_subordinate_ips()`, `get_device_by_ip()`, `get_all_device_ips()`, `get_all_device_ids()`. |
 | `back/database.py` | Конфігурація підключень: PostgreSQL (SQLAlchemy) + MongoDB (Motor async). Змінні `engine`, `SessionLocal`, `security_logs_collection`. |
 | `back/docker-compose.yml` | Docker-конфігурація для запуску PostgreSQL та MongoDB сервісів. |
 | `back/requirements.txt` | Python-залежності: FastAPI, SQLAlchemy, Motor, Pydantic, Flask, Jupyter та ін. |
@@ -64,6 +67,7 @@
 | File | Description |
 |------|-------------|
 | `sidebar-nav.tsx` | **Бокова навігація** з модульною структурою (Cyber Defense / Risk & Compliance). Система ролей (CEO, CISO, PM) з демо-логіном через модальне вікно. Блокування доступу для ролей без прав. Переклади через `useTranslation`. |
+| `login-modal.tsx` | **Модальне вікно вибору ролі** — `LoginModal` компонент з профілями користувачів (CEO/CISO/PM), кольоровими аватарами, перекладеними підписами. Імпортує `USERS_DATA` з `sidebar-data`. |
 | `sidebar-data.ts` | **Дані навігації** — визначення `CYBER_NAV_ITEMS` та `RISK_NAV_ITEMS` з translation keys (не перекладеними значеннями). `NavItem` тип з `React.ComponentType` іконками. `USERS_DATA` для демо-логін системи. |
 | `expert-utils.tsx` | **Утиліти для експертної системи** — `LogStyle` тип, `getLogStyle()` для кольору подій (red/yellow/emerald), `translateLogEventType()` для перекладу типу події, `getEventDescription()` для отримання опису, `mapEventTypeToKey()` маппінг на translation key, `formatDate()` форматування часу. Підтримує мапінг для DDoS підтипів (Slowloris, UDP Flood, DNS Amplification), ransomware, stealth загроз. |
 | `risk-matrix.tsx` | **Матриця ризиків 5×5** (Probability × Impact). Кольорове кодування: червоний (≥15), жовтий (≥8), зелений (<8). Крапки показують ризики за категоріями (Cyber, Operational, Financial). Підсвічування результатів пошуку. |
@@ -122,5 +126,5 @@
 6. **Мови**: переклади зберігаються у `translations/uk.ts` та `translations/en.ts`, доступ через `useTranslation()` hook
 7. **CORS**: відкритий для всіх джерел (`allow_origins=["*"]`)
 8. **Обладнання має ієрархію** через `parent_id` (self-referencing foreign key)
-9. **Симуляція атак**: POST `/api/v1/simulation/start` запускає `SimulationManager` з асинхронним game loop. Три типи атак (DDoS, Stealth, Ransomware) з різною логікою впливу. `apply_fix()` для ручного вирішення інцидентів. Архітектура розділена на 3 файли: `attack_definitions.py` (константи), `simulation_core.py` (ядро гри), `simulation.py` (менеджер).
+9. **Симуляція атак**: POST `/api/v1/simulation/start` запускає `SimulationManager` з асинхронним game loop. Три типи атак (DDoS, Stealth, Ransomware) з різною логікою впливу. `apply_fix()` для ручного вирішення інцидентів. Архітектура розділена на 4 файли: `attack_definitions.py` (константи), `simulation_core.py` (ядро гри), `simulation.py` (менеджер), `simulation_endpoints.py` (API-ендпоїнти).
 10. **Експертна система**: `expert-utils.tsx` містить утиліти для перекладу подій (`translateLogEventType`, `getEventDescription`), `sidebar-data.ts` визначає навігаційні items з translation keys для уникнення hook violation

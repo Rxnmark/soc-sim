@@ -1,86 +1,111 @@
-import React from "react";
-import { ShieldAlert, CheckCircle2, AlertTriangle } from "lucide-react";
+import { useTranslation } from "../../context/LanguageContext";
 
-export type LogStyle = {
-  icon: React.ReactNode;
-  color: string;
-  badge: string;
-};
-
-export function getLogStyle(eventType: string): LogStyle {
+// Criticality ranking for sorting (0 = most critical, 3 = least)
+export function getCriticalityRank(eventType: string): number {
   const type = eventType.toLowerCase();
-  if (type.includes("unauthorized") || type.includes("attack")) {
-    return { icon: <ShieldAlert className="w-4 h-4 text-red-500" />, color: "text-red-500", badge: "bg-red-500/10 text-red-500 border-red-500/20" };
-  }
-  if (type.includes("auto-fix") || type.includes("applied") || type.includes("success")) {
-    return { icon: <CheckCircle2 className="w-4 h-4 text-emerald-500" />, color: "text-emerald-500", badge: "bg-emerald-500/10 text-emerald-500 border-emerald-500/20" };
-  }
-  return { icon: <AlertTriangle className="w-4 h-4 text-yellow-500" />, color: "text-yellow-500", badge: "bg-yellow-500/10 text-yellow-500 border-yellow-500/20" };
+  // Critical (red) - DDoS attacks causing system disruptions, equipment going offline
+  // Check DDoS subtypes first: slowloris, udp flood, dns amplification, ntp amplification
+  if ("slowloris udp flood dns amplification ntp amplification ddos".split(" ").some(k => type.includes(k))) return 0;
+  // Critical (red) - any attack that causes equipment to go offline/encrypted
+  if ("offline encrypted".split(" ").some(k => type.includes(k))) return 0;
+  // Significant (orange) - ransomware, data leaks, spyware, encryption attacks (ENCRYPTED status without equipment disruption)
+  if ("ransomware exfiltration spyware data leak covert channel cryptolocker encryption".split(" ").some(k => type.includes(k))) return 1;
+  // Minor (yellow) - scanning, injection attempts, brute-force, warnings, unauthorized access, blocked
+  // Note: "attack" is excluded to avoid matching DDoS-related events
+  if ("scan injection unauthorized access security warning drift antivirus port bruteforce blocked".split(" ").some(k => type.includes(k))) return 2;
+  return 3; // least critical (auto-fix, resolved, neutralized)
 }
 
-export function formatDate(dateString: string): string {
-  if (!dateString) return "Just now";
-  const date = new Date(dateString);
-  return date.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+// Get card styling based on criticality
+export function getCardClass(eventType: string, criticalityRank: number): string {
+  if (eventType.includes('Auto-Fix')) return 'p-3.5 rounded-lg border border-emerald-500/30 bg-emerald-500/5 hover:bg-muted/40 transition-all cursor-pointer hover:border-primary/50 shadow-sm hover:shadow';
+  const borderColor = criticalityRank === 0 ? 'border-red-500/40' : criticalityRank === 1 ? 'border-orange-500/40' : criticalityRank === 2 ? 'border-yellow-500/40' : 'border-border';
+  const bgColor = criticalityRank === 0 ? 'bg-red-500/5' : criticalityRank === 1 ? 'bg-orange-500/5' : criticalityRank === 2 ? 'bg-yellow-500/5' : 'bg-background';
+  return `p-3.5 rounded-lg border ${borderColor} ${bgColor} hover:bg-muted/40 transition-all cursor-pointer hover:border-primary/50 shadow-sm hover:shadow`;
 }
 
-export function mapEventTypeToKey(eventType: string): string {
-  const lower = eventType.toLowerCase();
-  
-  // Ransomware subtypes
-  if (lower.includes("ransomware") || lower.includes("cryptolocker") || lower.includes("ransomware-x") || lower.includes("encryption")) return "logEventTypes.ransomware_detected";
-  
-  // DDoS subtypes
-  if (lower.includes("slowloris")) return "logEventTypes.slowloris_detected";
-  if (lower.includes("udp flood")) return "logEventTypes.udp_flood_detected";
-  if (lower.includes("dns amplification")) return "logEventTypes.dns_amplification_detected";
-  if (lower.includes("ddos") || lower.includes("ddos attack") || lower.includes("traffic flood") || lower.includes("syn flood")) return "logEventTypes.ddos_attack";
-  
-  // Stealth subtypes
-  if (lower.includes("data leak") || lower.includes("data exfiltration")) return "logEventTypes.data_leak_detected";
-  if (lower.includes("spyware") || lower.includes("covert channel")) return "logEventTypes.spyware_detected";
-  
-  // Legacy/expert system types
-  if (lower.includes("unauthorized access")) return "logEventTypes.unauthorized_access_attempt";
-  if (lower.includes("sql injection") || lower.includes("injection")) return "logEventTypes.sql_injection_attempt";
-  if (lower.includes("security warning")) return "logEventTypes.security_warning";
-  if (lower.includes("antivirus signature")) return "logEventTypes.outdated_antivirus_signature";
-  if (lower.includes("configuration drift")) return "logEventTypes.configuration_drift_detected";
-  if (lower.includes("port scan") || lower.includes("scan activity")) return "logEventTypes.port_scan_activity";
-  if (lower.includes("auto-fix") || lower.includes("applied")) return "logEventTypes.auto_fix_applied";
-  
+export function isResolvedThreat(eventType: string): boolean {
+  return "auto-fix applied success neutralized".split(" ").some(k => eventType.toLowerCase().includes(k));
+}
+
+// Log event type translation
+export function translateLogEventType(t: (key: string, fallback: string) => string, eventType: string): string {
+  const type = eventType.toLowerCase();
+  // Check DDoS subtypes first
+  if (type.includes("slowloris")) return t("threats.slowloris", "Slowloris DDoS");
+  if (type.includes("udp flood")) return t("threats.udp_flood", "UDP Flood");
+  if (type.includes("dns amplification")) return t("threats.dns_amplification", "DNS Amplification");
+  if (type.includes("ntp amplification")) return t("threats.ntp_amplification", "NTP Amplification");
+  if (type.includes("ddos")) return t("threats.ddos", "DDoS Attack");
+  if (type.includes("ransomware")) return t("threats.ransomware", "Ransomware");
+  if (type.includes("exfiltration")) return t("threats.exfiltration", "Data Exfiltration");
+  if (type.includes("spyware")) return t("threats.spyware", "Spyware");
+  if (type.includes("data leak")) return t("threats.data_leak", "Data Leak");
+  if (type.includes("covert channel")) return t("threats.covert_channel", "Covert Channel");
+  if (type.includes("cryptolocker")) return t("threats.cryptolocker", "CryptoLocker");
+  if (type.includes("encryption attack")) return t("threats.encryption_attack", "Encryption Attack");
+  if (type.includes("scan")) return t("threats.scan", "Port Scan");
+  if (type.includes("injection")) return t("threats.injection", "SQL Injection");
+  if (type.includes("unauthorized")) return t("threats.unauthorized", "Unauthorized Access");
+  if (type.includes("security warning")) return t("threats.security_warning", "Security Warning");
+  if (type.includes("drift")) return t("threats.drift", "DNS Drift");
+  if (type.includes("antivirus")) return t("threats.antivirus", "Antivirus Alert");
+  if (type.includes("port")) return t("threats.port_scan", "Port Scan");
+  if (type.includes("bruteforce")) return t("threats.bruteforce", "Brute-force");
+  if (type.includes("blocked")) return t("threats.blocked", "Blocked");
+  if (type.includes("auto-fix") || type.includes("applied")) return t("threats.auto_fix", "Auto-Fix Applied");
+  if (type.includes("neutralized")) return t("threats.neutralized", "Neutralized");
+  if (type.includes("success")) return t("threats.success", "Success");
   return eventType;
 }
 
-export function translateLogEventType(t: (key: string, fallback?: string) => string | React.ReactNode, eventType: string): string {
-  const key = mapEventTypeToKey(eventType);
-  return t(key, eventType) as string;
+// Get event description
+export function getEventDescription(t: (key: string, fallback: string) => string, eventType: string): string {
+  const type = eventType.toLowerCase();
+  if (type.includes("slowloris")) return t("logs.slowloris_desc", "Slowloris DDoS attack detected - connection exhaustion");
+  if (type.includes("udp flood")) return t("logs.udp_flood_desc", "UDP Flood attack - bandwidth saturation");
+  if (type.includes("dns amplification")) return t("logs.dns_amp_desc", "DNS Amplification attack detected");
+  if (type.includes("ntp amplification")) return t("logs.ntp_amp_desc", "NTP Amplification attack detected");
+  if (type.includes("ddos")) return t("logs.ddos_desc", "DDoS attack detected - service disruption");
+  if (type.includes("ransomware")) return t("logs.ransomware_desc", "Ransomware detected - files encrypted");
+  if (type.includes("exfiltration")) return t("logs.exfiltration_desc", "Data exfiltration attempt detected");
+  if (type.includes("spyware")) return t("logs.spyware_desc", "Spyware detected on system");
+  if (type.includes("data leak")) return t("logs.data_leak_desc", "Data leak detected");
+  if (type.includes("covert channel")) return t("logs.covert_channel_desc", "Covert channel communication detected");
+  if (type.includes("cryptolocker")) return t("logs.cryptolocker_desc", "CryptoLocker ransomware detected");
+  if (type.includes("encryption attack")) return t("logs.encryption_attack_desc", "Encryption attack detected");
+  if (type.includes("scan")) return t("logs.scan_desc", "Port scanning activity detected");
+  if (type.includes("injection")) return t("logs.injection_desc", "SQL Injection attempt detected");
+  if (type.includes("unauthorized")) return t("logs.unauthorized_desc", "Unauthorized access attempt detected");
+  if (type.includes("security warning")) return t("logs.security_warning_desc", "Security warning triggered");
+  if (type.includes("drift")) return t("logs.drift_desc", "DNS drift detected");
+  if (type.includes("antivirus")) return t("logs.antivirus_desc", "Antivirus alert triggered");
+  if (type.includes("port")) return t("logs.port_scan_desc", "Port scan detected");
+  if (type.includes("bruteforce")) return t("logs.bruteforce_desc", "Brute-force attack detected");
+  if (type.includes("blocked")) return t("logs.blocked_desc", "Blocked connection attempt");
+  if (type.includes("auto-fix") || type.includes("applied")) return t("logs.auto_fix_desc", "System auto-fixed the issue");
+  if (type.includes("neutralized")) return t("logs.neutralized_desc", "Threat neutralized");
+  if (type.includes("success")) return t("logs.success_desc", "Success");
+  return eventType;
 }
 
-export function getEventDescription(t: (key: string, fallback?: string) => string | React.ReactNode, eventType: string): string {
-  const lower = eventType.toLowerCase();
-  
-  // Ransomware subtypes
-  if (lower.includes("ransomware") || lower.includes("cryptolocker") || lower.includes("ransomware-x") || lower.includes("encryption")) return t("logEventTypes.ransomware_desc", "") as string;
-  
-  // DDoS subtypes
-  if (lower.includes("slowloris")) return t("logEventTypes.slowloris_desc", "") as string;
-  if (lower.includes("udp flood")) return t("logEventTypes.udp_flood_desc", "") as string;
-  if (lower.includes("dns amplification")) return t("logEventTypes.dns_amplification_desc", "") as string;
-  if (lower.includes("ddos") || lower.includes("ddos attack") || lower.includes("traffic flood") || lower.includes("syn flood")) return t("logEventTypes.ddos_attack_desc", "") as string;
-  
-  // Stealth subtypes
-  if (lower.includes("data leak") || lower.includes("data exfiltration")) return t("logEventTypes.data_leak_desc", "") as string;
-  if (lower.includes("spyware") || lower.includes("covert channel")) return t("logEventTypes.spyware_desc", "") as string;
-  
-  // Legacy/expert system types
-  if (lower.includes("unauthorized access")) return t("logEventTypes.unauthorized_access_desc", "") as string;
-  if (lower.includes("sql injection")) return t("logEventTypes.sql_injection_desc", "") as string;
-  if (lower.includes("security warning")) return t("logEventTypes.security_warning_desc", "") as string;
-  if (lower.includes("antivirus signature")) return t("logEventTypes.outdated_antivirus_desc", "") as string;
-  if (lower.includes("configuration drift")) return t("logEventTypes.configuration_drift_desc", "") as string;
-  if (lower.includes("port scan") || lower.includes("scan activity")) return t("logEventTypes.port_scan_desc", "") as string;
-  if (lower.includes("auto-fix") || lower.includes("applied")) return t("logEventTypes.auto_fix_desc", "") as string;
-  
-  return eventType;
+// Format date
+export function formatDate(timestamp: string): string {
+  const date = new Date(timestamp);
+  return date.toLocaleTimeString("uk-UA", { hour: "2-digit", minute: "2-digit", second: "2-digit" });
+}
+
+// Get log style
+export function getLogStyle(eventType: string): { badge: string; color: string; icon: React.ReactNode } {
+  const type = eventType.toLowerCase();
+  if (type.includes("auto-fix") || type.includes("applied") || type.includes("success") || type.includes("neutralized")) {
+    return { badge: "bg-emerald-500/10 text-emerald-500 border-emerald-500/20", color: "text-emerald-500", icon: null };
+  }
+  if ("ddos slowloris udp flood dns amplification ntp amplification offline encrypted".split(" ").some(k => type.includes(k))) {
+    return { badge: "bg-red-500/10 text-red-500 border-red-500/20", color: "text-red-500", icon: null };
+  }
+  if ("ransomware exfiltration spyware data leak covert channel cryptolocker encryption".split(" ").some(k => type.includes(k))) {
+    return { badge: "bg-orange-500/10 text-orange-500 border-orange-500/20", color: "text-orange-500", icon: null };
+  }
+  return { badge: "bg-yellow-500/10 text-yellow-500 border-yellow-500/20", color: "text-yellow-500", icon: null };
 }

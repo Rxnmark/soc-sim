@@ -4,8 +4,9 @@ import { Card } from "../components/ui/card";
 import { Badge } from "../components/ui/badge";
 import { Button } from "../components/ui/button";
 import { useTranslation } from "../../context/LanguageContext";
-import { getLogStyle, formatDate, translateLogEventType, getEventDescription } from "../components/expert-utils";
-import { AlertTriangle, Shield, Activity, ShieldAlert, CheckCircle2, Clock, Database, Box } from "lucide-react";
+import { getLogStyle, translateLogEventType, getEventDescription } from "../components/expert-utils";
+import { AlertTriangle, Activity, ShieldAlert } from "lucide-react";
+import { CounterCard, LogCard, ArchivedLog, ColumnLogs } from "./cyber-threats-components";
 
 // Types
 interface SecurityLog {
@@ -34,9 +35,10 @@ function getLogCategory(eventType: string): "warning" | "active" | "critical" {
   const type = eventType.toLowerCase();
   if ("auto-fix applied success neutralized".includes(type)) return "warning";
   // Critical (red) - DDoS attacks causing system disruptions, equipment going offline
-  if ("ddos".includes(type)) return "critical";
+  // Check DDoS subtypes first (slowloris, udp flood, dns amplification, ntp amplification)
+  if ("slowloris udp flood dns amplification ntp amplification ddos".split(" ").some(k => type.includes(k))) return "critical";
   // Critical (red) - any attack that causes equipment to go offline/encrypted
-  if ("offline".includes(type) || "encrypted".includes(type)) return "critical";
+  if ("offline encrypted".split(" ").some(k => type.includes(k))) return "critical";
   // Significant (orange) - ransomware, data leaks, spyware, encryption attacks (ENCRYPTED status without equipment disruption)
   if ("ransomware exfiltration spyware data leak covert channel cryptolocker encryption".split(" ").some(k => type.includes(k))) return "active";
   // Minor (yellow) - scanning, injection attempts, brute-force, warnings, unauthorized access, blocked
@@ -50,91 +52,12 @@ function isResolvedLog(eventType: string): boolean {
   return "auto-fix applied success neutralized".split(" ").some(k => eventType.toLowerCase().includes(k));
 }
 
-// Counter Card Component
-function CounterCard({
-  title,
-  count,
-  color,
-  icon,
-  bgColor,
-  iconColor,
-}: {
-  title: string;
-  count: number;
-  color: string;
-  icon: React.ReactNode;
-  bgColor: string;
-  iconColor: string;
-}) {
-  return (
-    <Card className={`p-5 border border-border hover:shadow-md transition-shadow`}>
-      <div className="flex items-start justify-between">
-        <div>
-          <p className="text-xs text-muted-foreground mb-1">{title}</p>
-          <p className={`text-3xl font-semibold ${color}`}>{count}</p>
-        </div>
-        <div className={`w-10 h-10 rounded-lg ${bgColor} flex items-center justify-center`}>
-          {icon}
-        </div>
-      </div>
-    </Card>
-  );
-}
-
-// Log Card Component for 3-column layout
-function LogCard({ log, onClick }: { log: SecurityLog; onClick: () => void }) {
-  const style = getLogStyle(log.event_type);
-  return (
-    <div
-      className="p-3 rounded-lg border border-border bg-background hover:bg-muted/40 transition-all cursor-pointer hover:border-primary/50 group shadow-sm"
-      onClick={onClick}
-    >
-      <div className="flex items-start justify-between mb-2">
-        <div className="flex items-center gap-2">
-          {style.icon}
-          <span className={`text-xs font-semibold ${style.color}`}>
-            {translateLogEventType(useTranslation().t, log.event_type)}
-          </span>
-        </div>
-        <div className="flex items-center gap-1 text-xs text-muted-foreground">
-          <Clock className="w-3 h-3" />
-          {formatDate(log.timestamp)}
-        </div>
-      </div>
-      <p className="text-xs text-card-foreground mb-2 line-clamp-2">
-        {getEventDescription(useTranslation().t, log.event_type)}
-      </p>
-      <div className="flex items-center justify-between pt-2 border-t border-border/50">
-        <span className="text-[10px] font-mono text-muted-foreground">
-          SRC: <span className="text-foreground">{log.source_ip}</span>
-        </span>
-      </div>
-    </div>
-  );
-}
-
-// Archived Log Component (simplified)
-function ArchivedLog({ log }: { log: SecurityLog }) {
-  const style = getLogStyle(log.event_type);
-  return (
-    <div className="p-2 rounded border border-border/50 bg-muted/10 opacity-60">
-      <div className="flex items-center justify-between">
-        <span className={`text-[10px] font-medium ${style.color}`}>
-          {translateLogEventType(useTranslation().t, log.event_type)}
-        </span>
-        <span className="text-[9px] text-muted-foreground">{formatDate(log.timestamp)}</span>
-      </div>
-    </div>
-  );
-}
-
 export default function CyberThreatsPage() {
   const { t } = useTranslation();
   const [statistics, setStatistics] = useState<ThreatStatistics | null>(null);
   const [allLogs, setAllLogs] = useState<SecurityLog[]>([]);
   const [selectedLog, setSelectedLog] = useState<SecurityLog | null>(null);
   const [loading, setLoading] = useState(true);
-  const [archivedLogs, setArchivedLogs] = useState<SecurityLog[]>([]);
 
   const fetchStatistics = () => {
     fetch("http://127.0.0.1:8000/api/v1/threats/statistics")
@@ -153,42 +76,17 @@ export default function CyberThreatsPage() {
     return () => clearInterval(interval);
   }, []);
 
-  // Split logs into today's and archived
-  useEffect(() => {
-    if (!allLogs.length) return;
-    const now = new Date();
-    const startOfDay = new Date(now.getFullYear(), now.getMonth(), now.getDate());
-    const today = allLogs.filter(log => new Date(log.timestamp) >= startOfDay);
-    const archived = allLogs.filter(log => new Date(log.timestamp) < startOfDay).slice(0, 30);
-    setArchivedLogs(archived);
-  }, [allLogs]);
 
   // Separate logs by category (filter out resolved logs)
   const warningLogs = useMemo(() => 
-    allLogs.filter(log => getLogCategory(log.event_type) === "warning" && !isResolvedLog(log.event_type)),
-    [allLogs]
+    allLogs.filter(log => getLogCategory(log.event_type) === "warning" && !isResolvedLog(log.event_type)), [allLogs]
   );
   const activeLogs = useMemo(() => 
-    allLogs.filter(log => getLogCategory(log.event_type) === "active" && !isResolvedLog(log.event_type)),
-    [allLogs]
+    allLogs.filter(log => getLogCategory(log.event_type) === "active" && !isResolvedLog(log.event_type)), [allLogs]
   );
   const criticalLogs = useMemo(() => 
-    allLogs.filter(log => getLogCategory(log.event_type) === "critical" && !isResolvedLog(log.event_type)),
-    [allLogs]
+    allLogs.filter(log => getLogCategory(log.event_type) === "critical" && !isResolvedLog(log.event_type)), [allLogs]
   );
-
-  // Chart data - hourly breakdown
-  const chartData = useMemo(() => {
-    if (!statistics) return [];
-    const hours = ["00:00", "03:00", "06:00", "09:00", "12:00", "15:00", "18:00", "21:00"];
-    const step = 3;
-    return hours.map((label, i) => ({
-      name: label,
-      warning: statistics.hourly.warning[i * step] || 0,
-      active: statistics.hourly.active[i * step] || 0,
-      critical: statistics.hourly.critical[i * step] || 0,
-    }));
-  }, [statistics]);
 
   // DETAIL VIEW
   if (selectedLog) {
@@ -235,16 +133,15 @@ export default function CyberThreatsPage() {
                     {getEventDescription(t, selectedLog.event_type)}
                   </p>
                 </div>
-                <div className="grid grid-cols-2 gap-3 rounded-lg border border-border p-3 bg-muted/20">
-                  <div>
-                    <p className="text-[10px] font-medium text-muted-foreground uppercase">{t('logs.source_ip', 'Source IP')}</p>
-                    <p className="text-sm font-mono">{selectedLog.source_ip}</p>
-                  </div>
-                  <div>
-                    <p className="text-[10px] font-medium text-muted-foreground uppercase">{t('logs.timestamp', 'Timestamp')}</p>
-                    <p className="text-sm">{new Date(selectedLog.timestamp).toLocaleString()}</p>
-                  </div>
+              <div className="grid grid-cols-2 gap-3 rounded-lg border border-border p-3 bg-muted/20">
+                <div>
+                  <p className="text-[10px] font-medium text-muted-foreground uppercase">{t('logs.source_ip', 'Source IP')}</p>
+                  <p className="text-sm font-mono">{selectedLog.source_ip}</p>
                 </div>
+                <div><p className="text-[10px] font-medium text-muted-foreground uppercase">{t('logs.timestamp', 'Timestamp')}</p>
+                  <p className="text-sm">{new Date(selectedLog.timestamp).toLocaleString()}</p>
+                </div>
+              </div>
               </div>
 
               <Button className="w-full" onClick={() => setSelectedLog(null)}>
@@ -338,73 +235,5 @@ export default function CyberThreatsPage() {
         </main>
       </div>
     </div>
-  );
-}
-
-// Reusable Column Component
-function ColumnLogs({
-  title,
-  logs,
-  archived,
-  color,
-  icon,
-  borderColor,
-  bgColor,
-  onClick,
-  countLabel,
-  t,
-}: {
-  title: string;
-  logs: SecurityLog[];
-  archived: SecurityLog[];
-  color: string;
-  icon: React.ReactNode;
-  borderColor: string;
-  bgColor: string;
-  onClick: (log: SecurityLog) => void;
-  countLabel: string;
-  t: (key: string, fallback?: string) => string | React.ReactNode;
-}) {
-  return (
-    <Card className={`flex flex-col h-full border ${borderColor} overflow-hidden`} style={{ maxHeight: '100%' }}>
-      {/* Column Header */}
-      <div className={`p-3 border-b border-border ${bgColor} flex items-center justify-between shrink-0`}>
-        <div className="flex items-center gap-2">
-          {icon}
-          <h3 className={`text-sm font-semibold ${color}`}>{title}</h3>
-        </div>
-        <Badge variant="outline" className={`${color} border-${color.split('-')[1]}-500/30 text-xs`}>
-          {logs.length}
-        </Badge>
-      </div>
-
-      {/* Today's Logs */}
-      <div className="flex-1 overflow-y-auto p-2 space-y-2 custom-scrollbar">
-        {logs.length === 0 ? (
-          <p className="text-xs text-muted-foreground text-center py-10">No {title.toLowerCase()} logs</p>
-        ) : (
-          logs.map((log) => (
-            <LogCard key={log._id} log={log} onClick={() => onClick(log)} />
-          ))
-        )}
-      </div>
-
-      {/* Archived Section */}
-      {archived.length > 0 && (
-        <div className="border-t border-border p-2">
-          <div className="flex items-center gap-1.5 mb-2">
-            <Database className="w-3 h-3 text-muted-foreground" />
-            <span className="text-[10px] font-medium text-muted-foreground uppercase">
-              {t('threatStats.archived', 'Archived')} ({archived.length})
-            </span>
-          </div>
-          <div className="space-y-1 max-h-[150px] overflow-y-auto">
-            {archived.map((log) => (
-              <ArchivedLog key={log._id} log={log} />
-            ))}
-          </div>
-        </div>
-      )}
-    </Card>
   );
 }

@@ -46,3 +46,16 @@ class Threat(Base):
     severity = Column(String) # "Low", "Medium", "High", "Critical"
     category = Column(String, default="Active") # "Warning", "Active", "Critical"
     timestamp = Column(DateTime, default=datetime.datetime.utcnow)
+    is_archived = Column(Boolean, default=False)
+
+# --- МОДЕЛЬ ДЛЯ АРХІВУ ЗАГРОЗ (РЕАКТИВНА СИСТЕМА) ---
+class ThreatArchive(Base):
+    __tablename__ = "threat_archives"
+    id = Column(Integer, primary_key=True, index=True)
+    threat_type = Column(String)
+    description = Column(String)
+    source_ip = Column(String)
+    equipment_name = Column(String, nullable=True)
+    severity = Column(String) # "Critical", "High", "Medium", "Low"
+    category = Column(String) # "Warning", "Active", "Critical"
+    archived_at = Column(DateTime, default=datetime.datetime.utcnow)

@@ -1,0 +1,1 @@
+.\llama-server -m Qwen3.6-35B-A3B-IQ4_XS.gguf --port 1234 -ngl 99 --no-mmap -ot ".ffn_(gate)_exps.=CPU" -c 262144 -np 1 -b 1024 -ub 512 --cache-type-k q8_0 --cache-type-v turbo4 -fa on --reasoning on --temp 0.6 --top-k 20 --min-p 0 --repeat-penalty 1.0 --presence-penalty 0 --chat-template-kwargs "{\"preserve_thinking\": true}" -cpent 4096 -cram 16384 --no-context-shift

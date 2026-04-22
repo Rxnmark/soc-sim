@@ -121,15 +121,15 @@ class SimulationManager(SimulationCore):
                 eq.status = "Online"
                 db.commit()
 
-            await security_logs_collection.insert_one({
-                "event_type": "Auto-Fix Applied",
-                "description": f"Equipment {eq_name} recovered after {attack_type} fix ({recovery_seconds}s).",
-                "source_ip": eq.ip_address if eq else "unknown",
-                "timestamp": datetime.now(timezone.utc),
-            })
+                await security_logs_collection.insert_one({
+                    "event_type": "Auto-Fix Applied",
+                    "description": f"Equipment {eq_name} recovered after {attack_type} fix ({recovery_seconds}s).",
+                    "source_ip": eq.ip_address if eq else "unknown",
+                    "timestamp": datetime.now(timezone.utc),
+                })
 
-            # Recalculate topology dependencies to restore children
-            await self._update_topology_dependencies(db)
+                # Recalculate topology dependencies to restore children
+                await self._update_topology_dependencies(db)
         finally:
             db.close()
 
