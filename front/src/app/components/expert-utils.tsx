@@ -31,6 +31,9 @@ export function mapEventTypeToKey(eventType: string): string {
   if (lower.includes("ransomware") || lower.includes("cryptolocker") || lower.includes("ransomware-x") || lower.includes("encryption")) return "logEventTypes.ransomware_detected";
   
   // DDoS subtypes
+  if (lower.includes("slowloris")) return "logEventTypes.slowloris_detected";
+  if (lower.includes("udp flood")) return "logEventTypes.udp_flood_detected";
+  if (lower.includes("dns amplification")) return "logEventTypes.dns_amplification_detected";
   if (lower.includes("ddos") || lower.includes("ddos attack") || lower.includes("traffic flood") || lower.includes("syn flood")) return "logEventTypes.ddos_attack";
   
   // Stealth subtypes
@@ -61,6 +64,9 @@ export function getEventDescription(t: (key: string, fallback?: string) => strin
   if (lower.includes("ransomware") || lower.includes("cryptolocker") || lower.includes("ransomware-x") || lower.includes("encryption")) return t("logEventTypes.ransomware_desc", "") as string;
   
   // DDoS subtypes
+  if (lower.includes("slowloris")) return t("logEventTypes.slowloris_desc", "") as string;
+  if (lower.includes("udp flood")) return t("logEventTypes.udp_flood_desc", "") as string;
+  if (lower.includes("dns amplification")) return t("logEventTypes.dns_amplification_desc", "") as string;
   if (lower.includes("ddos") || lower.includes("ddos attack") || lower.includes("traffic flood") || lower.includes("syn flood")) return t("logEventTypes.ddos_attack_desc", "") as string;
   
   // Stealth subtypes

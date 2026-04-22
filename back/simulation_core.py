@@ -68,7 +68,7 @@ class SimulationCore:
             all_eq = db.query(models.Equipment).all()
             available_ids = {
                 eq.id for eq in all_eq
-                if eq.status in ("Online", "Rebooting") and eq.id not in self.active_attacks
+                if eq.status in ("Online", "Rebooting", "Unreachable") and eq.id not in self.active_attacks
             }
             if not available_ids:
                 return
@@ -268,9 +268,10 @@ class SimulationCore:
         # Update Unreachable status for IoT/Endpoint devices
         for eq in db.query(models.Equipment).all():
             if eq.type in ("IoT", "Endpoint") and eq.id not in self.active_attacks:
-                if affected_status.get(eq.id, False) and eq.status == "Online":
+                is_parent_offline = affected_status.get(eq.id, False)
+                if is_parent_offline and eq.status in ("Online", "Unreachable"):
                     eq.status = "Unreachable"
-                elif not affected_status.get(eq.id, False) and eq.status == "Unreachable":
+                elif not is_parent_offline and eq.status in ("Unreachable", "Offline", "Rebooting"):
                     eq.status = "Online"
 
         db.commit()

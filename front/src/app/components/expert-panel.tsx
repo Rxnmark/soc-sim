@@ -1,22 +1,71 @@
-import { useEffect, useState } from "react";
-import { Terminal, Clock, Network, CheckCircle2, XCircle, ArrowLeft, FilterX, ShieldAlert, Sword } from "lucide-react";
+import { useEffect, useState, useMemo } from "react";
+import { Terminal, Clock, Network, CheckCircle2, XCircle, ArrowLeft, FilterX, ShieldAlert, Sword, ShieldOff, ShieldCheck } from "lucide-react";
 import { Button } from "./ui/button";
 import { Badge } from "./ui/badge";
 import { Card } from "./ui/card";
 import { useTranslation } from "../../context/LanguageContext";
 import { getLogStyle, formatDate, translateLogEventType, getEventDescription } from "./expert-utils";
+import { motion, AnimatePresence } from "framer-motion";
 
 interface Props {
   filterIp: string | null;
 }
 
+interface SecurityLog {
+  _id: string;
+  event_type: string;
+  description: string;
+  source_ip: string;
+  target_ip?: string;
+  timestamp: string;
+}
+
+interface ArchivedThreat {
+  _id: string;
+  event_type: string;
+  description: string;
+  source_ip: string;
+  target_ip?: string;
+  timestamp: string;
+  archivedAt: string;
+}
+
+// Criticality ranking for sorting (0 = most critical, 3 = least)
+function getCriticalityRank(eventType: string): number {
+  const type = eventType.toLowerCase();
+  // Critical (red) - DDoS attacks causing system disruptions, equipment going offline
+  if ("ddos".split(" ").some(k => type.includes(k))) return 0;
+  // Critical (red) - any attack that causes equipment to go offline/encrypted
+  if ("offline encrypted".split(" ").some(k => type.includes(k))) return 0;
+  // Significant (orange) - ransomware, data leaks, spyware, encryption attacks (ENCRYPTED status without equipment disruption)
+  if ("ransomware exfiltration spyware data leak covert channel cryptolocker encryption".split(" ").some(k => type.includes(k))) return 1;
+  // Minor (yellow) - scanning, injection attempts, brute-force, warnings, unauthorized access, blocked
+  // Note: "attack" is excluded to avoid matching DDoS-related events
+  if ("scan injection unauthorized access security warning drift antivirus port bruteforce blocked".split(" ").some(k => type.includes(k))) return 2;
+  return 3; // least critical (auto-fix, resolved, neutralized)
+}
+
+// Get card styling based on criticality
+function getCardClass(eventType: string, criticalityRank: number): string {
+  if (eventType.includes('Auto-Fix')) return 'p-3.5 rounded-lg border border-emerald-500/30 bg-emerald-500/5 hover:bg-muted/40 transition-all cursor-pointer hover:border-primary/50 shadow-sm hover:shadow';
+  const borderColor = criticalityRank === 0 ? 'border-red-500/40' : criticalityRank === 1 ? 'border-orange-500/40' : criticalityRank === 2 ? 'border-yellow-500/40' : 'border-border';
+  const bgColor = criticalityRank === 0 ? 'bg-red-500/5' : criticalityRank === 1 ? 'bg-orange-500/5' : criticalityRank === 2 ? 'bg-yellow-500/5' : 'bg-background';
+  return `p-3.5 rounded-lg border ${borderColor} ${bgColor} hover:bg-muted/40 transition-all cursor-pointer hover:border-primary/50 shadow-sm hover:shadow`;
+}
+
+function isResolvedThreat(eventType: string): boolean {
+  return "auto-fix applied success neutralized".split(" ").some(k => eventType.toLowerCase().includes(k));
+}
+
 export function ExpertPanel({ filterIp }: Props) {
   const { t } = useTranslation();
-  const [logs, setLogs] = useState<any[]>([]);
+  const [logs, setLogs] = useState<SecurityLog[]>([]);
+  const [archivedThreats, setArchivedThreats] = useState<Set<string>>(new Set());
   const [loading, setLoading] = useState(true);
-  const [selectedLog, setSelectedLog] = useState<any | null>(null);
+  const [selectedLog, setSelectedLog] = useState<SecurityLog | null>(null);
   const [isFixing, setIsFixing] = useState(false);
   const [fixMessage, setFixMessage] = useState<string | null>(null);
+  const [archivingId, setArchivingId] = useState<string | null>(null);
 
   const fetchLogs = () => {
     fetch("http://127.0.0.1:8000/api/v1/logs")
@@ -28,70 +77,87 @@ export function ExpertPanel({ filterIp }: Props) {
       .catch((err) => console.error("Error loading logs:", err));
   };
 
+  const fetchArchived = async () => {
+    try {
+      const res = await fetch("http://127.0.0.1:8000/api/v1/threats/archived");
+      const data = await res.json();
+      // Store archived source IPs as a Set for quick lookup
+      const archivedIps = new Set<string>(data.map((a: any) => String(a.source_ip)));
+      setArchivedThreats(archivedIps);
+    } catch (err) {
+      console.error("Error loading archived:", err);
+    }
+  };
+
   useEffect(() => {
     fetchLogs();
-    const interval = setInterval(fetchLogs, 5000);
+    fetchArchived();
+    const interval = setInterval(() => {
+      fetchLogs();
+      fetchArchived();
+    }, 5000);
     return () => clearInterval(interval);
   }, []);
 
-  const displayedLogs = filterIp ? logs.filter(log => log.source_ip === filterIp) : logs;
+  const displayedLogs = useMemo(() => {
+    let filtered = filterIp ? logs.filter(log => log.source_ip === filterIp) : logs;
+    // Filter out already resolved threats from active view
+    filtered = filtered.filter(log => !isResolvedThreat(log.event_type));
+    // Filter out already archived threats (by source IP)
+    filtered = filtered.filter(log => !archivedThreats.has(log.source_ip));
+    // Sort by criticality (most critical first)
+    return filtered.sort((a, b) => getCriticalityRank(a.event_type) - getCriticalityRank(b.event_type));
+  }, [logs, filterIp, archivedThreats]);
 
-  const handleApplyFix = async () => {
-    if (!selectedLog) return;
+  const handleArchiveThreat = async (log: SecurityLog) => {
+    setArchivingId(log._id);
+    try {
+      // First, archive the threat
+      await fetch("http://127.0.0.1:8000/api/v1/threats/archive", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ source_ip: log.source_ip })
+      });
+      // Then, apply the fix (triggers equipment reboot via backend)
+      await fetch("http://127.0.0.1:8000/api/v1/actions/block", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ source_ip: log.source_ip })
+      });
+      // Remove from displayed immediately
+      setLogs(prev => prev.filter(l => l._id !== log._id));
+      // Add source IP to archived set so it won't reappear on next poll
+      setArchivedThreats(prev => new Set(prev).add(log.source_ip));
+      setSelectedLog(null);
+    } catch (error) {
+      console.error("Error archiving threat:", error);
+    } finally {
+      setArchivingId(null);
+    }
+  };
+
+  const handleApplyFix = async (log: SecurityLog) => {
     setIsFixing(true);
     setFixMessage(null);
 
     try {
-      // Try simulation fix first (by equipment ID from IP)
-      const eqResponse = await fetch("http://127.0.0.1:8000/api/v1/equipment");
-      const equipment = await eqResponse.json();
-      
-      // Use target_ip if available (simulation attacks), otherwise use source_ip
-      const targetIp = selectedLog.target_ip || selectedLog.source_ip;
-      const targetEq = equipment.find((e: any) => e.ip_address === targetIp);
-
-      if (targetEq) {
-        // Try simulation fix (non-blocking - returns immediately)
-        try {
-          const simFixResponse = await fetch(`http://127.0.0.1:8000/api/v1/simulation/fix?equipment_id=${targetEq.id}`, {
-            method: "POST",
-          });
-          const result = await simFixResponse.json();
-          if (simFixResponse.ok && result.status === "success") {
-            setFixMessage(`Fix initiated: ${result.attack_type || 'Attack neutralized'}. Equipment recovering...`);
-            setSelectedLog(null);
-            fetchLogs();
-            return;
-          }
-        } catch (simError) {
-          // Simulation fix failed, fall back to legacy fix
-          console.log("Simulation fix failed, using legacy fix");
-        }
-      }
-
-      // Legacy fix
-      await fetch("http://127.0.0.1:8000/api/v1/actions/block", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ source_ip: selectedLog.source_ip })
-      });
-      
-      setFixMessage("Legacy fix applied");
-      setSelectedLog(null);
-      fetchLogs();
+      // First archive the threat
+      await handleArchiveThreat(log);
+      setFixMessage("Threat neutralized and archived");
+      setTimeout(() => setFixMessage(null), 3000);
     } catch (error) {
       console.error("Error applying fix:", error);
       setFixMessage("Error applying fix");
+      setTimeout(() => setFixMessage(null), 3000);
     } finally {
-      setTimeout(() => setFixMessage(null), 5000);
       setIsFixing(false);
     }
   };
 
-  // DETAIL VIEW COMPONENT
+  // DETAIL VIEW
   if (selectedLog) {
     const style = getLogStyle(selectedLog.event_type);
-    const isResolved = selectedLog.event_type.includes("Auto-Fix");
+    const isResolved = isResolvedThreat(selectedLog.event_type);
     
     return (
       <Card className="flex flex-col h-full w-full bg-card border border-border rounded-lg shadow-sm overflow-y-auto custom-scrollbar p-6">
@@ -137,7 +203,7 @@ export function ExpertPanel({ filterIp }: Props) {
             <h3 className="text-sm font-semibold text-card-foreground mb-2.5">{t('logs.event_details', 'Event Details')}</h3>
             <div className={`p-4 rounded-lg border ${isResolved ? 'bg-emerald-500/5 border-emerald-500/20' : 'bg-red-500/5 border-red-500/20'}`}>
               <p className={`text-sm font-semibold mb-1.5 ${style.color}`}>
-                {selectedLog.event_type.includes("Auto-Fix") ? t('logs.action_taken', 'Action Taken') : getEventDescription(t, selectedLog.event_type)}
+                {getEventDescription(t, selectedLog.event_type)}
               </p>
             </div>
           </div>
@@ -198,7 +264,6 @@ export function ExpertPanel({ filterIp }: Props) {
         </div>
 
         <div className="space-y-3 pt-5 border-t border-border mt-auto shrink-0">
-          {/* Fix status message */}
           {fixMessage && (
             <div className="p-2 rounded-md bg-emerald-500/10 border border-emerald-500/20 text-center">
               <p className="text-xs text-emerald-500 font-medium">{fixMessage}</p>
@@ -206,25 +271,25 @@ export function ExpertPanel({ filterIp }: Props) {
           )}
 
           {isResolved ? (
-            <Button disabled className="w-full bg-muted/50 text-muted-foreground font-semibold cursor-not-allowed border border-border">
+            <Button disabled className="w-full bg-muted/50 text-muted-foreground cursor-not-allowed border border-border">
               <CheckCircle2 className="w-4 h-4 mr-2" />
               {t('logs.fix_applied', 'Fix Already Applied')}
             </Button>
           ) : (
             <Button 
-              onClick={handleApplyFix}
+              onClick={() => handleApplyFix(selectedLog)}
               disabled={isFixing}
               className="w-full bg-gradient-to-r from-emerald-600 to-teal-600 hover:from-emerald-700 hover:to-teal-700 text-white font-semibold transition-all"
             >
               {isFixing ? (
                 <>
-                  <span className="animate-spin mr-2"><CheckCircle2 className="w-4 h-4" /></span>
+                  <span className="animate-spin mr-2"><ShieldCheck className="w-4 h-4" /></span>
                   {t('logs.applying_fix', 'Applying Fix...')}
                 </>
               ) : (
                 <>
                   <Sword className="w-4 h-4 mr-2" />
-                  {t('logs.fix_simulation_attack', 'Neutralize Threat')}
+                  {t('logs.fix_simulation_attack', 'Neutralize & Archive')}
                 </>
               )}
             </Button>
@@ -238,7 +303,7 @@ export function ExpertPanel({ filterIp }: Props) {
     );
   }
 
-  // LOGS LIST VIEW COMPONENT
+  // MAIN VIEW - LOGS LIST WITH ARCHIVE
   return (
     <div className="flex flex-col h-full w-full bg-card border border-border rounded-lg overflow-hidden shadow-sm">
       <div className="p-4 border-b border-border bg-muted/50 flex flex-col gap-2 shrink-0">
@@ -246,13 +311,30 @@ export function ExpertPanel({ filterIp }: Props) {
           <div className="flex items-center gap-2">
             <Terminal className="w-5 h-5 text-primary" />
             <h2 className="text-lg font-semibold text-card-foreground">{t('logs.live_security_logs', 'Live Security Logs')}</h2>
+            <span className="text-[10px] text-muted-foreground">({displayedLogs.length})</span>
           </div>
-          <div className="flex items-center gap-2 px-2 py-1 rounded-md bg-emerald-500/10 border border-emerald-500/20">
-            <span className="relative flex h-2 w-2">
-              <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75"></span>
-              <span className="relative inline-flex rounded-full h-2 w-2 bg-emerald-500"></span>
-            </span>
-            <span className="text-[10px] text-emerald-500 font-medium uppercase tracking-wider">{t('logs.connected', 'Connected')}</span>
+          <div className="flex items-center gap-2">
+            {/* Archived Threats Container Indicator */}
+            {archivedThreats.size > 0 && (
+              <Button
+                variant="outline"
+                size="sm"
+                className="relative flex items-center gap-1.5 px-2.5 py-1.5 border-amber-500/30 bg-amber-500/5 text-amber-500 hover:bg-amber-500/10"
+              >
+                <ShieldOff className="w-3.5 h-3.5" />
+                <span className="text-[10px] font-medium">{t('logs.archived_threats', 'Archived')}</span>
+                <Badge className="bg-amber-500 text-white border-none text-[10px] px-1.5 h-4">
+                  {archivedThreats.size}
+                </Badge>
+              </Button>
+            )}
+            <div className="flex items-center gap-2 px-2 py-1 rounded-md bg-emerald-500/10 border border-emerald-500/20">
+              <span className="relative flex h-2 w-2">
+                <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75"></span>
+                <span className="relative inline-flex rounded-full h-2 w-2 bg-emerald-500"></span>
+              </span>
+              <span className="text-[10px] text-emerald-500 font-medium uppercase">{t('logs.connected', 'Connected')}</span>
+            </div>
           </div>
         </div>
         
@@ -269,46 +351,71 @@ export function ExpertPanel({ filterIp }: Props) {
         {loading ? (
           <p className="text-sm text-center text-muted-foreground mt-10">{t('logs.loading_logs', 'Loading logs...')}</p>
         ) : displayedLogs.length === 0 ? (
-          <p className="text-sm text-center text-muted-foreground mt-10">{t('logs.no_logs', 'No logs available yet.')}</p>
+          <p className="text-sm text-center text-muted-foreground mt-10">{t('logs.no_logs', 'No active threats. Systems secure.')}</p>
         ) : (
-          displayedLogs.map((log) => {
-            const style = getLogStyle(log.event_type);
-            return (
-              <div 
-                key={log._id} 
-                className={`p-3.5 rounded-lg border ${log.event_type.includes('Auto-Fix') ? 'border-emerald-500/30 bg-emerald-500/5' : 'border-border bg-background'} hover:bg-muted/40 transition-all cursor-pointer hover:border-primary/50 group shadow-sm hover:shadow`}
-                onClick={() => setSelectedLog(log)}
-              >
-                <div className="flex items-start justify-between mb-2.5">
-                  <div className="flex items-center gap-2">
-                    {style.icon}
-                    <span className={`text-sm font-semibold ${style.color}`}>
-                      {translateLogEventType(t, log.event_type)}
-                    </span>
+          <AnimatePresence mode="popLayout">
+            {displayedLogs.map((log) => {
+              const style = getLogStyle(log.event_type);
+              const criticalityRank = getCriticalityRank(log.event_type);
+              return (
+                <motion.div
+                  key={log._id}
+                  layout
+                  initial={{ opacity: 0, y: 20 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  exit={{ opacity: 0, scale: 0.8, transition: { duration: 0.3 } }}
+                  whileHover={{ scale: 1.01 }}
+                  className="group"
+                >
+                  <div 
+                    className={getCardClass(log.event_type, criticalityRank)}
+                    onClick={() => setSelectedLog(log)}
+                  >
+                    <div className="flex items-start justify-between mb-2.5">
+                      <div className="flex items-center gap-2">
+                        {style.icon}
+                        <span className={`text-sm font-semibold ${style.color}`}>
+                          {translateLogEventType(t, log.event_type)}
+                        </span>
+                        {/* Criticality indicator */}
+                        <Badge 
+                          variant="outline" 
+                          className={`text-[9px] px-1 h-4 ${
+                            criticalityRank === 0 ? 'bg-red-500/20 text-red-500 border-red-500/30' :
+                            criticalityRank === 1 ? 'bg-orange-500/20 text-orange-500 border-orange-500/30' :
+                            'bg-yellow-500/20 text-yellow-500 border-yellow-500/30'
+                          }`}
+                        >
+                          {criticalityRank === 0 ? 'CRIT' : criticalityRank === 1 ? 'HIGH' : 'MED'}
+                        </Badge>
+                      </div>
+                      <div className="flex items-center gap-1.5 text-xs text-muted-foreground font-mono">
+                        <Clock className="w-3 h-3" />
+                        {formatDate(log.timestamp)}
+                      </div>
+                    </div>
+                    
+                    <p className="text-sm text-card-foreground mb-3 leading-relaxed">
+                      {getEventDescription(t, log.event_type)}
+                    </p>
+                    
+                    <div className="flex items-center justify-between pt-2.5 border-t border-border/50">
+                      <span className="text-xs font-mono text-muted-foreground">
+                        {t('logs.src_ip', 'SRC IP')}: <span className="text-foreground group-hover:text-primary transition-colors">{log.source_ip}</span>
+                      </span>
+                      <span className="text-[10px] text-primary opacity-0 group-hover:opacity-100 transition-opacity font-medium">
+                        {t('logs.view_details', 'View Details')} →
+                      </span>
+                    </div>
                   </div>
-                  <div className="flex items-center gap-1.5 text-xs text-muted-foreground font-mono">
-                    <Clock className="w-3 h-3" />
-                    {formatDate(log.timestamp)}
-                  </div>
-                </div>
-                
-                <p className="text-sm text-card-foreground mb-3 leading-relaxed">
-                  {getEventDescription(t, log.event_type)}
-                </p>
-                
-                <div className="flex items-center justify-between pt-2.5 border-t border-border/50">
-                  <span className="text-xs font-mono text-muted-foreground">
-                    {t('logs.src_ip', 'SRC IP')}: <span className="text-foreground group-hover:text-primary transition-colors">{log.source_ip}</span>
-                  </span>
-                  <span className="text-[10px] text-primary opacity-0 group-hover:opacity-100 transition-opacity font-medium">
-                    {t('logs.view_details', 'View Details')} →
-                  </span>
-                </div>
-              </div>
-            );
-          })
+                </motion.div>
+              );
+            })}
+          </AnimatePresence>
         )}
       </div>
+
+      {/* Archived Threats Count Badge in Header is sufficient */}
     </div>
   );
 }

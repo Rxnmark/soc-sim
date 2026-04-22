@@ -128,6 +128,7 @@ class SimulationManager(SimulationCore):
                 "timestamp": datetime.now(timezone.utc),
             })
 
+            # Recalculate topology dependencies to restore children
             await self._update_topology_dependencies(db)
         finally:
             db.close()

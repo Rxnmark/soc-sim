@@ -2,7 +2,7 @@ export const uk = {
   sidebar: {
     dashboard: "Дашборд",
     assets: "Кібер-активи",
-    threats: "Розвідка загроз",
+    threats: "Статистика загроз",
     settings: "Налаштування",
     projects: "Проєкти",
     analytics: "Аналітика",
@@ -10,6 +10,8 @@ export const uk = {
     team: "Команда",
     cyber_defense: "КІБЕРЗАХИСТ",
     risk_compliance: "РИЗИКИ ТА КОМПЛАЄНС",
+    access_control: "Контроль доступу",
+    security_analytics: "Аналітика безпеки",
   },
   dashboard: {
     title: "Дашборд кібербезпеки",
@@ -27,7 +29,7 @@ export const uk = {
     systems_secure: "Системи захищені",
     monitoring: "Моніторинг",
     just_now: "Щойно",
-    maintenance: "Обслуговування / Перезавантаження",
+    maintenance: "Обслуговування",
     critical_vulnerabilities: "Критичні вразливості",
   },
   assets: {
@@ -63,12 +65,26 @@ export const uk = {
     detected_at: "Виявлено о",
     close: "Закрити",
     realtime_enabled: "Режим реального часу увімкнено",
-    warning_count: "Попередження",
+    warning_count: "Незначні",
+  },
+  threatStats: {
+    title: "Статистика загроз",
+    subtitle: "Історія атак за добу та аналіз",
+    warning_count: "Незначні",
+    active_count: "Потребують уваги",
+    critical_count: "Критичні",
+    hourly_chart: "Годинникова розподіл атак",
+    archived: "Архівовано",
+    loading: "Завантаження статистики...",
   },
   threatCategories: {
-    warning: "Попередні",
-    active: "Активні",
+    warning: "Незначні",
+    active: "Потребують уваги",
     critical: "Критичні",
+  },
+  analytics: {
+    title: "Аналітика безпеки",
+    subtitle: "Метрики безпеки та аналітика загроз",
   },
   equipment: {
     title: "Моніторинг обладнання",
@@ -97,14 +113,14 @@ export const uk = {
     connected: "Підключено",
     filtering_by_ip_prefix: "Фільтрація за IP:",
     loading_logs: "Завантаження логів...",
-    no_logs: "Логи поки недоступні.",
+    no_logs: "Активних загроз немає. Системи захищені.",
     src_ip: "IP ДЖЕРЕЛА",
     view_details: "Переглянути деталі",
     back_to_logs: "Назад до логів",
     expert_analysis: "Аналіз експертної системи",
     resolved: "Вирішено",
     critical: "Критично",
-    warning: "Попередження",
+    warning: "Незначні",
     auto_fix_available: "Доступне автовиправлення",
     event_details: "Деталі події",
     system_context: "Контекст системи",
@@ -124,6 +140,8 @@ export const uk = {
     close_details: "Закрити деталі",
     fix_applied: "Виправлення вже застосовано",
     just_now: "Щойно",
+    archived_threats: "Архівовані",
+    neutralized_threats: "Нейтралізовані загрози",
   },
   settings: {
     title: "Системні налаштування",
@@ -225,7 +243,14 @@ export const uk = {
     data_leak_detected: "Виявлено виток даних",
     data_leak_desc: "Виявлено несанкціоновану передачу конфіденційних даних за межі мережі",
     spyware_detected: "Виявлено шпигунське ПЗ",
-    spyware_desc: "Виявлено прихований зловмисний процес, що збирає конфіденційну інформацію"
+    spyware_desc: "Виявлено прихований зловмисний процес, що збирає конфіденційну інформацію",
+    // DDoS subtypes
+    slowloris_detected: "Повільна DDoS-атака (Slowloris)",
+    slowloris_desc: "Атака на веб-сервер із затримкою запитів для виснаження ресурсів",
+    udp_flood_detected: "UDP Flood атака",
+    udp_flood_desc: "Масовий надсилання UDP-пакетів для перевантаження мережевого обладнання",
+    dns_amplification_detected: "DNS Amplification атака",
+    dns_amplification_desc: "Використання DNS-серверів для розширення трафіку атаки"
   }
 };
 

@@ -7,11 +7,16 @@ and critical infrastructure definitions.
 # Attack definitions for the simulation engine
 SIMULATION_ATTACKS = {
     "DDoS": {
-        "types": ["DDoS Attack", "Traffic Flood", "SYN Flood"],
+        "types": ["DDoS Attack", "Traffic Flood", "SYN Flood", "NTP Amplification", "DNS Amplification", "Slowloris", "HTTP Flood", "UDP Flood"],
         "log_events": [
             "Massive incoming traffic flood detected targeting {target_name}.",
             "DDoS attack detected: {attack_type} from multiple sources.",
             "Service degradation due to traffic overload on {target_name}.",
+            "Failed DDoS attempt blocked by firewall - {attack_type} detected and mitigated.",
+            "Port scan detected from external source - reconnaissance activity on {target_name}.",
+            "Unauthorized access attempt blocked - brute-force login detected on {target_name}.",
+            "SQL injection attempt blocked by WAF on {target_name}.",
+            "Security warning - suspicious network activity detected on {target_name}.",
         ],
         "effect": "offline",
     },

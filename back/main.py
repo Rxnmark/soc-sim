@@ -4,6 +4,7 @@ from fastapi import FastAPI, Depends, BackgroundTasks, Query
 from fastapi.middleware.cors import CORSMiddleware
 from sqlalchemy.orm import Session
 import models
+from models import ThreatArchive
 from database import engine, Base, get_db, SessionLocal, security_logs_collection
 from schemas import ThreatResponse, SecurityLog, FixRequest, SimulationStatus, FixResponse
 from threats import generate_random_threat
@@ -165,12 +166,34 @@ async def reboot_equipment(equipment_id: int):
 
 @app.post("/api/v1/actions/block")
 async def apply_auto_fix(request: FixRequest, background_tasks: BackgroundTasks, db: Session = Depends(get_db)):
-    """Legacy endpoint - finds equipment by IP and reboots it."""
-    equipment = db.query(models.Equipment).filter(models.Equipment.ip_address == request.source_ip).first()
+    """Find equipment with an active risk matching the source_ip, and reboot it."""
+    # Find equipment that has an active (unresolved) risk assessment
+    # The source_ip in logs corresponds to equipment that was attacked
+    equipment = None
+    
+    # Try to find equipment by matching ip_address to source_ip
+    equipment = db.query(models.Equipment).filter(
+        models.Equipment.ip_address == request.source_ip,
+        models.Equipment.status == "Online"
+    ).first()
+    
+    # If not found, find equipment with an active risk (the most likely target)
+    if not equipment:
+        # Find the most recent active risk and get its equipment
+        active_risk = db.query(models.RiskAssessment).filter(
+            models.RiskAssessment.is_resolved == False
+        ).order_by(models.RiskAssessment.created_at.desc()).first()
+        if active_risk:
+            equipment = db.query(models.Equipment).filter(
+                models.Equipment.id == active_risk.equipment_id
+            ).first()
     
     if equipment:
         equipment.status = "Rebooting"
-        db.query(models.RiskAssessment).filter(models.RiskAssessment.equipment_id == equipment.id).update({"is_resolved": True})
+        db.query(models.RiskAssessment).filter(
+            models.RiskAssessment.equipment_id == equipment.id,
+            models.RiskAssessment.is_resolved == False
+        ).update({"is_resolved": True})
         db.commit()
         target_name = f"внутрiшнього пристрою {equipment.name}"
         background_tasks.add_task(reboot_equipment, equipment.id)
@@ -226,6 +249,131 @@ async def stop_simulation():
     return {"status": "stopped"}
 
 # --- 6. МАРШРУТ ДЛЯ ОНОВЛЕННЯ БАЗИ ДАНИХ ---
+# ------------------------------------------------------------------
+# THREAT STATISTICS & ARCHIVE ENDPOINTS
+# ------------------------------------------------------------------
+@app.get("/api/v1/threats/statistics")
+async def get_threat_statistics():
+    """Get daily attack statistics by category from security logs."""
+    from datetime import timedelta
+    from bson import ObjectId
+    
+    now = datetime.now(timezone.utc)
+    start_of_day = now.replace(hour=0, minute=0, second=0, microsecond=0)
+    end_of_day = start_of_day + timedelta(days=1)
+    
+    # Get today's logs
+    logs_cursor = security_logs_collection.find({
+        "timestamp": {
+            "$gte": start_of_day,
+            "$lt": end_of_day
+        }
+    }).sort("timestamp", -1)
+    today_logs = await logs_cursor.to_list(length=10000)
+    
+    # Count by category (matches frontend categorization)
+    warning_count = 0
+    active_count = 0
+    critical_count = 0
+    
+    for log in today_logs:
+        event_type = log.get("event_type", "").lower()
+        if "auto-fix" in event_type or "applied" in event_type or "success" in event_type or "neutralized" in event_type:
+            warning_count += 1
+        # Critical (red) - DDoS attacks causing system disruptions, equipment going offline
+        elif "ddos" in event_type:
+            critical_count += 1
+        # Critical (red) - any attack that causes equipment to go offline/encrypted
+        elif "offline" in event_type or "encrypted" in event_type:
+            critical_count += 1
+        # Significant (orange) - ransomware, data leaks, spyware, encryption attacks (ENCRYPTED status without equipment disruption)
+        elif any(k in event_type for k in ["ransomware", "exfiltration", "spyware", "data leak", "covert channel", "cryptolocker", "encryption", "encryption attack"]):
+            active_count += 1
+        # Minor (yellow) - scanning, injection attempts, brute-force, warnings, unauthorized access, blocked
+        # Note: "attack" is excluded to avoid matching DDoS-related events
+        elif any(k in event_type for k in ["scan", "injection", "unauthorized", "security warning", "drift", "antivirus", "port", "bruteforce", "blocked"]):
+            warning_count += 1
+        else:
+            warning_count += 1
+    
+    # Hourly breakdown for chart
+    hourly_counts = {"warning": [0]*24, "active": [0]*24, "critical": [0]*24}
+    for log in today_logs:
+        ts = log.get("timestamp")
+        if ts:
+            hour = ts.hour
+            event_type = log.get("event_type", "").lower()
+            if "auto-fix" in event_type or "applied" in event_type or "success" in event_type or "neutralized" in event_type:
+                hourly_counts["warning"][hour] += 1
+            elif "ddos" in event_type:
+                hourly_counts["critical"][hour] += 1
+            elif "offline" in event_type or "encrypted" in event_type:
+                hourly_counts["critical"][hour] += 1
+            elif any(k in event_type for k in ["ransomware", "exfiltration", "spyware", "data leak", "covert channel", "cryptolocker", "encryption", "encryption attack"]):
+                hourly_counts["active"][hour] += 1
+            elif any(k in event_type for k in ["scan", "injection", "unauthorized", "security warning", "drift", "antivirus", "port", "bruteforce", "blocked"]):
+                hourly_counts["warning"][hour] += 1
+            else:
+                hourly_counts["warning"][hour] += 1
+    
+    # Get recent logs (last 24h) for each category
+    recent_logs_cursor = security_logs_collection.find().sort("timestamp", -1).limit(50)
+    recent_logs_raw = await recent_logs_cursor.to_list(length=50)
+    
+    # Convert ObjectId to string for JSON serialization
+    recent_logs = []
+    for log in recent_logs_raw:
+        log["_id"] = str(log["_id"])
+        recent_logs.append(log)
+    
+    return {
+        "warning_count": warning_count,
+        "active_count": active_count,
+        "critical_count": critical_count,
+        "hourly": hourly_counts,
+        "recent_logs": recent_logs
+    }
+
+@app.post("/api/v1/threats/archive")
+async def archive_threat(request: FixRequest, db: Session = Depends(get_db)):
+    """Archive a resolved threat to the threat archive table."""
+    equipment = db.query(models.Equipment).filter(models.Equipment.ip_address == request.source_ip).first()
+    
+    if not equipment:
+        # Archive by IP directly without equipment
+        archive = ThreatArchive(
+            threat_type="Neutralized",
+            description=f"Threat neutralized from IP {request.source_ip}",
+            source_ip=request.source_ip,
+            equipment_name=None,
+            severity="Medium",
+            category="Active"
+        )
+        db.add(archive)
+        db.commit()
+        return {"status": "archived"}
+    
+    archive = ThreatArchive(
+        threat_type="Neutralized",
+        description=f"Threat neutralized on {equipment.name}",
+        source_ip=request.source_ip,
+        equipment_name=equipment.name,
+        severity="Medium",
+        category="Active"
+    )
+    db.add(archive)
+    db.commit()
+    return {"status": "archived"}
+
+@app.get("/api/v1/threats/archived")
+def get_archived_threats(limit: int = 100, db: Session = Depends(get_db)):
+    """Get archived threats."""
+    archives = db.query(ThreatArchive).order_by(ThreatArchive.archived_at.desc()).limit(limit).all()
+    return [{"id": a.id, "threat_type": a.threat_type, "description": a.description, 
+             "source_ip": a.source_ip, "equipment_name": a.equipment_name,
+             "severity": a.severity, "category": a.category,
+             "archived_at": a.archived_at.isoformat()} for a in archives]
+
 @app.post("/api/v1/reset")
 async def reset_database(db: Session = Depends(get_db)):
     """Reset database AND start the simulation game."""

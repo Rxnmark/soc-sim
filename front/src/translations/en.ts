@@ -2,7 +2,7 @@ export const en = {
   sidebar: {
     dashboard: "Dashboard",
     assets: "Cyber Assets",
-    threats: "Threat Intelligence",
+    threats: "Threat Statistics",
     settings: "Settings",
     projects: "Projects",
     analytics: "Analytics",
@@ -10,6 +10,8 @@ export const en = {
     team: "Team",
     cyber_defense: "CYBER DEFENSE",
     risk_compliance: "RISK & COMPLIANCE",
+    access_control: "Access Control",
+    security_analytics: "Security Analytics",
   },
   dashboard: {
     title: "Cybersecurity Dashboard",
@@ -27,7 +29,7 @@ export const en = {
     systems_secure: "Systems Secure",
     monitoring: "Monitoring",
     just_now: "Just now",
-    maintenance: "Maintenance / Reboot",
+    maintenance: "Maintenance",
     critical_vulnerabilities: "Critical Vulnerabilities",
   },
   assets: {
@@ -65,9 +67,19 @@ export const en = {
     realtime_enabled: "Real-time updates enabled",
     warning_count: "Warnings",
   },
+  threatStats: {
+    title: "Threat Statistics",
+    subtitle: "Daily attack history & analysis",
+    warning_count: "Minor",
+    active_count: "Requires Attention",
+    critical_count: "Critical",
+    hourly_chart: "Hourly Attack Distribution",
+    archived: "Archived",
+    loading: "Loading statistics...",
+  },
   threatCategories: {
-    warning: "Warning",
-    active: "Active",
+    warning: "Minor",
+    active: "Requires Attention",
     critical: "Critical",
   },
   equipment: {
@@ -97,7 +109,7 @@ export const en = {
     connected: "Connected",
     filtering_by_ip_prefix: "Filtering by IP:",
     loading_logs: "Loading logs...",
-    no_logs: "No logs available yet.",
+    no_logs: "No active threats. Systems secure.",
     src_ip: "SRC IP",
     view_details: "View Details",
     back_to_logs: "Back to Live Logs",
@@ -120,10 +132,12 @@ export const en = {
     applying_fix: "Applying Fix...",
     apply_fix: "Apply Fix Automatically",
     simulation_attack: "Simulation Attack",
-    fix_simulation_attack: "Neutralize Threat",
+    fix_simulation_attack: "Neutralize & Archive",
     close_details: "Close Details",
     fix_applied: "Fix Already Applied",
     just_now: "Just now",
+    archived_threats: "Archived",
+    neutralized_threats: "Neutralized Threats",
   },
   settings: {
     title: "System Settings",
@@ -225,7 +239,14 @@ export const en = {
     data_leak_detected: "Data Leak Detected",
     data_leak_desc: "Unauthorized transmission of confidential data detected outside the network",
     spyware_detected: "Spyware Detected",
-    spyware_desc: "Hidden malicious process detected collecting sensitive information"
+    spyware_desc: "Hidden malicious process detected collecting sensitive information",
+    // DDoS subtypes
+    slowloris_detected: "Slowloris Attack (Slow DDoS)",
+    slowloris_desc: "Web server attack using delayed requests to exhaust resources",
+    udp_flood_detected: "UDP Flood Attack",
+    udp_flood_desc: "Massive UDP packet flooding to overwhelm network equipment",
+    dns_amplification_detected: "DNS Amplification Attack",
+    dns_amplification_desc: "Exploiting DNS servers to amplify attack traffic"
   }
 };
 export default en;
