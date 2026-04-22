@@ -26,14 +26,26 @@ export function formatDate(dateString: string): string {
 
 export function mapEventTypeToKey(eventType: string): string {
   const lower = eventType.toLowerCase();
+  
+  // Ransomware subtypes
+  if (lower.includes("ransomware") || lower.includes("cryptolocker") || lower.includes("ransomware-x") || lower.includes("encryption")) return "logEventTypes.ransomware_detected";
+  
+  // DDoS subtypes
+  if (lower.includes("ddos") || lower.includes("ddos attack") || lower.includes("traffic flood") || lower.includes("syn flood")) return "logEventTypes.ddos_attack";
+  
+  // Stealth subtypes
+  if (lower.includes("data leak") || lower.includes("data exfiltration")) return "logEventTypes.data_leak_detected";
+  if (lower.includes("spyware") || lower.includes("covert channel")) return "logEventTypes.spyware_detected";
+  
+  // Legacy/expert system types
   if (lower.includes("unauthorized access")) return "logEventTypes.unauthorized_access_attempt";
   if (lower.includes("sql injection") || lower.includes("injection")) return "logEventTypes.sql_injection_attempt";
-  if (lower.includes("ddos") || lower.includes("ddos attack")) return "logEventTypes.ddos_attack";
   if (lower.includes("security warning")) return "logEventTypes.security_warning";
   if (lower.includes("antivirus signature")) return "logEventTypes.outdated_antivirus_signature";
   if (lower.includes("configuration drift")) return "logEventTypes.configuration_drift_detected";
   if (lower.includes("port scan") || lower.includes("scan activity")) return "logEventTypes.port_scan_activity";
   if (lower.includes("auto-fix") || lower.includes("applied")) return "logEventTypes.auto_fix_applied";
+  
   return eventType;
 }
 
@@ -44,13 +56,25 @@ export function translateLogEventType(t: (key: string, fallback?: string) => str
 
 export function getEventDescription(t: (key: string, fallback?: string) => string | React.ReactNode, eventType: string): string {
   const lower = eventType.toLowerCase();
+  
+  // Ransomware subtypes
+  if (lower.includes("ransomware") || lower.includes("cryptolocker") || lower.includes("ransomware-x") || lower.includes("encryption")) return t("logEventTypes.ransomware_desc", "") as string;
+  
+  // DDoS subtypes
+  if (lower.includes("ddos") || lower.includes("ddos attack") || lower.includes("traffic flood") || lower.includes("syn flood")) return t("logEventTypes.ddos_attack_desc", "") as string;
+  
+  // Stealth subtypes
+  if (lower.includes("data leak") || lower.includes("data exfiltration")) return t("logEventTypes.data_leak_desc", "") as string;
+  if (lower.includes("spyware") || lower.includes("covert channel")) return t("logEventTypes.spyware_desc", "") as string;
+  
+  // Legacy/expert system types
   if (lower.includes("unauthorized access")) return t("logEventTypes.unauthorized_access_desc", "") as string;
   if (lower.includes("sql injection")) return t("logEventTypes.sql_injection_desc", "") as string;
-  if (lower.includes("ddos") || lower.includes("ddos attack")) return t("logEventTypes.ddos_attack_desc", "") as string;
   if (lower.includes("security warning")) return t("logEventTypes.security_warning_desc", "") as string;
   if (lower.includes("antivirus signature")) return t("logEventTypes.outdated_antivirus_desc", "") as string;
   if (lower.includes("configuration drift")) return t("logEventTypes.configuration_drift_desc", "") as string;
   if (lower.includes("port scan") || lower.includes("scan activity")) return t("logEventTypes.port_scan_desc", "") as string;
   if (lower.includes("auto-fix") || lower.includes("applied")) return t("logEventTypes.auto_fix_desc", "") as string;
+  
   return eventType;
 }

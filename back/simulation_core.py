@@ -78,21 +78,25 @@ class SimulationCore:
             if not target:
                 return
 
-            attack_type = self._pick_attack_type()
+            attack_category = self._pick_attack_type()
             source_ip = self._generate_unique_ip()
 
-            log_event = random.choice(SIMULATION_ATTACKS[attack_type]["log_events"])
-            description = log_event.format(target_name=target.name, attack_type=attack_type)
+            # Pick a random subtype from the category (e.g., "CryptoLocker" from "Ransomware")
+            attack_subtype = random.choice(SIMULATION_ATTACKS[attack_category]["types"])
+            
+            # Pick a random log event template
+            log_event = random.choice(SIMULATION_ATTACKS[attack_category]["log_events"])
+            description = log_event.format(target_name=target.name, attack_type=attack_subtype)
             timestamp = datetime.now(timezone.utc)
 
-            self._apply_attack_effect(target, attack_type, db)
+            self._apply_attack_effect(target, attack_category, db)
 
             new_risk = models.RiskAssessment(
                 equipment_id=target_id,
                 risk_level=target.risk_level,
-                description=f"{attack_type} detected on {target.name}: {description}",
+                description=f"{attack_subtype} detected on {target.name}: {description}",
                 is_resolved=False,
-                attack_type=attack_type,
+                attack_type=attack_category,
                 financial_impact=0,
                 created_at=timestamp,
             )
@@ -100,7 +104,7 @@ class SimulationCore:
             db.commit()
 
             await security_logs_collection.insert_one({
-                "event_type": attack_type,
+                "event_type": attack_subtype,
                 "description": description,
                 "source_ip": source_ip,
                 "target_ip": target.ip_address,
@@ -108,27 +112,27 @@ class SimulationCore:
             })
 
             self.active_attacks[target_id] = {
-                "type": attack_type,
+                "type": attack_category,
                 "source_ip": source_ip,
                 "risk_id": new_risk.id,
                 "financial_impact_total": 0,
                 "applied_at": asyncio.get_event_loop().time(),
             }
 
-            self.attack_history[attack_type] = self.attack_history.get(attack_type, 0) + 1
+            self.attack_history[attack_category] = self.attack_history.get(attack_category, 0) + 1
             await self._update_topology_dependencies(db)
 
         finally:
             db.close()
 
-    def _apply_attack_effect(self, target, attack_type: str, db: Session):
+    def _apply_attack_effect(self, target, attack_category: str, db: Session):
         """Apply the effect of an attack on the target equipment."""
-        if attack_type == "DDoS":
+        if attack_category == "DDoS":
             target.status = "Offline"
             target.risk_level = "Critical"
-        elif attack_type == "Stealth":
+        elif attack_category == "Stealth":
             target.risk_level = "Medium"
-        elif attack_type == "Ransomware":
+        elif attack_category == "Ransomware":
             target.risk_level = "Critical"
             asyncio.create_task(self._schedule_ransomware_encryption(target.id, db))
         else:

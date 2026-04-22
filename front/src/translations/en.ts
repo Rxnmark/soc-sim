@@ -216,7 +216,14 @@ export const en = {
     port_scan_activity: "Port Scan Activity",
     port_scan_desc: "Reconnaissance port scanning activity detected from external source",
     auto_fix_applied: "Auto-Fix Applied",
-    auto_fix_desc: "Automated security remediation successfully applied"
+    auto_fix_desc: "Automated security remediation successfully applied",
+    // Simulation attack subtypes
+    ransomware_detected: "Ransomware Detected",
+    ransomware_desc: "Ransomware encryption activity detected - critical files may be at risk",
+    data_leak_detected: "Data Leak Detected",
+    data_leak_desc: "Unauthorized transmission of confidential data detected outside the network",
+    spyware_detected: "Spyware Detected",
+    spyware_desc: "Hidden malicious process detected collecting sensitive information"
   }
 };
 export default en;
