@@ -17,6 +17,7 @@ import {
 // Custom Node Component to make it look like the existing cards but for a map
 const TopologyNode = ({ data }: any) => {
   const isCritical = data.risk_level === "Critical";
+  const isMedium = data.risk_level === "Medium";
   const isOffline = data.status === "Offline" || data.isAffected;
   
   const getIcon = (type: string) => {
@@ -32,13 +33,16 @@ const TopologyNode = ({ data }: any) => {
 
   const iconBgClass = isCritical 
     ? "bg-red-500/20 text-red-500 animate-pulse" 
-    : isOffline 
-      ? "bg-gray-500/20 text-gray-500" 
-      : "bg-emerald-500/20 text-emerald-500";
+    : isMedium
+      ? "bg-yellow-500/20 text-yellow-500"
+      : isOffline 
+        ? "bg-gray-500/20 text-gray-500" 
+        : "bg-emerald-500/20 text-emerald-500";
 
   return (
     <div className={`px-4 py-3 rounded-xl border shadow-lg bg-card min-w-[180px] transition-all ${
       isCritical ? 'border-red-500/50 shadow-red-500/10' : 
+      isMedium ? 'border-yellow-500/50 shadow-yellow-500/10' :
       isOffline ? 'border-dashed border-gray-500/50 opacity-70 grayscale' : 
       'border-border'
     }`}>
@@ -56,6 +60,12 @@ const TopologyNode = ({ data }: any) => {
 
       {isCritical && (
         <div className="absolute -top-2 -right-2 bg-red-500 rounded-full p-1 shadow-lg">
+          <AlertTriangle className="w-3 h-3 text-white" />
+        </div>
+      )}
+
+      {isMedium && (
+        <div className="absolute -top-2 -right-2 bg-yellow-500 rounded-full p-1 shadow-lg">
           <AlertTriangle className="w-3 h-3 text-white" />
         </div>
       )}
@@ -154,7 +164,9 @@ export const NetworkTopologyMap = ({ assets }: NetworkTopologyMapProps) => {
             type: 'smoothstep' as any,
             animated: isParentOffline,
             style: { 
-              stroke: isParentOffline ? '#ef4444' : (asset.risk_level === 'Critical' ? '#ef4444' : '#64748b'),
+              stroke: isParentOffline ? '#ef4444' : 
+                (asset.risk_level === 'Critical' ? '#ef4444' : 
+                  (asset.risk_level === 'Medium' ? '#eab308' : '#64748b')),
               strokeWidth: isParentOffline ? 3 : 1
             },
           });

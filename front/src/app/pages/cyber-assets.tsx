@@ -50,10 +50,10 @@ export default function CyberAssetsPage() {
     a.type.toLowerCase().includes(searchQuery.toLowerCase())
   );
 
-  const totalAssets = assets.length;
   const criticalAssets = assets.filter(a => a.risk_level === "Critical").length;
-  const offlineAssets = assets.filter(a => a.status === "Offline").length;
+  const offlineAssets = assets.filter(a => a.status === "Offline" || a.status === "Encrypted" || a.status === "Unreachable").length;
   const safeAssets = assets.filter(a => a.risk_level === "Safe" && a.status === "Online").length;
+  const requiresAttentionAssets = assets.filter(a => a.risk_level === "Medium").length;
 
   return (
     <div className="h-screen w-full flex bg-background overflow-hidden">
@@ -91,20 +91,20 @@ export default function CyberAssetsPage() {
             {/* STATS CARDS */}
             <div className="grid grid-cols-4 gap-4 mb-6 shrink-0">
               <div className="p-4 rounded-xl bg-card border border-border shadow-sm flex items-center gap-4">
-                <div className="w-12 h-12 rounded-full bg-primary/10 flex items-center justify-center"><Server className="w-6 h-6 text-primary" /></div>
-                <div><p className="text-xs text-muted-foreground">{t('assets.total_assets')}</p><p className="text-2xl font-bold">{totalAssets}</p></div>
-              </div>
-              <div className="p-4 rounded-xl bg-card border border-border shadow-sm flex items-center gap-4">
                 <div className="w-12 h-12 rounded-full bg-emerald-500/10 flex items-center justify-center"><Shield className="w-6 h-6 text-emerald-500" /></div>
                 <div><p className="text-xs text-muted-foreground">{t('assets.healthy')}</p><p className="text-2xl font-bold text-emerald-500">{safeAssets}</p></div>
+              </div>
+              <div className="p-4 rounded-xl bg-card border border-border shadow-sm flex items-center gap-4">
+                <div className="w-12 h-12 rounded-full bg-gray-500/10 flex items-center justify-center"><Power className="w-6 h-6 text-gray-400" /></div>
+                <div><p className="text-xs text-muted-foreground">{t('assets.systems_offline')}</p><p className="text-2xl font-bold text-gray-400">{offlineAssets}</p></div>
               </div>
               <div className="p-4 rounded-xl bg-card border border-border shadow-sm flex items-center gap-4">
                 <div className="w-12 h-12 rounded-full bg-red-500/10 flex items-center justify-center"><ShieldAlert className="w-6 h-6 text-red-500" /></div>
                 <div><p className="text-xs text-muted-foreground">{t('assets.critical_threats')}</p><p className="text-2xl font-bold text-red-500">{criticalAssets}</p></div>
               </div>
               <div className="p-4 rounded-xl bg-card border border-border shadow-sm flex items-center gap-4">
-                <div className="w-12 h-12 rounded-full bg-gray-500/10 flex items-center justify-center"><Power className="w-6 h-6 text-gray-400" /></div>
-                <div><p className="text-xs text-muted-foreground">{t('assets.systems_offline')}</p><p className="text-2xl font-bold text-gray-400">{offlineAssets}</p></div>
+                <div className="w-12 h-12 rounded-full bg-yellow-500/10 flex items-center justify-center"><AlertTriangle className="w-6 h-6 text-yellow-500" /></div>
+                <div><p className="text-xs text-muted-foreground">{t('assets.requires_attention')}</p><p className="text-2xl font-bold text-yellow-500">{requiresAttentionAssets}</p></div>
               </div>
             </div>
 
