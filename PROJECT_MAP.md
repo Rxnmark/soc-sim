@@ -72,7 +72,7 @@
 | `expert-panel.tsx` | **Експертна панель** — live-логи безпеки з MongoDB. Детальний перегляд подій з автоматичним визначенням типу (unauthorized, SQL injection, port scan тощо). Кнопка "Apply Fix" для блокування IP через API. Використовує `expert-utils.tsx` для перекладу. |
 | `export-modal.tsx` | Модальне вікно експорту звітів. |
 | `notifications-popover.tsx` | Спливаючі нотифікації на основі даних з API. |
-| `network-topology-map.tsx` | Візуалізація мережевої топології. |
+| `network-topology-map.tsx` | **Візуалізація мережевої топології** — використовує explicit connections для визначення зв'язків між обладнанням. Чотири сегментовані мережі: Core Backbone (Router → Switch), Enterprise (Core Switch → Servers/Endpoints), IoT (Guest WiFi → IoT devices), ICS (SCADA → PLC/Sensors). Каскадна ескалація offline-статусу: якщо батьківський пристрій offline, діти стають Unreachable. Стабільні позиції вузлів (ID-based). Горизонтальний спейс: 600px. Кольорове кодування: червоний (Critical), жовтий (Medium), сірий (Offline/Unreachable), зелений (Safe). |
 | `figma/ImageWithFallback.tsx` | Компонент зображення з fallback. |
 
 ### UI Components (`front/src/app/components/ui/`)
