@@ -43,6 +43,7 @@ export const en = {
     healthy: "Healthy",
     critical_threats: "Critical Threats",
     systems_offline: "Systems Offline",
+    requires_attention: "Requires Attention",
   },
   threats: {
     title: "Threat Intelligence",

@@ -43,6 +43,7 @@ export const uk = {
     healthy: "Справні",
     critical_threats: "Критичні загрози",
     systems_offline: "Системи офлайн",
+    requires_attention: "Потребує уваги",
   },
   threats: {
     title: "Розвідка загроз",
@@ -70,7 +71,7 @@ export const uk = {
     critical: "Критичні",
   },
   equipment: {
-    title: "Моніторюване обладнання",
+    title: "Моніторинг обладнання",
     search_placeholder: "Пошук пристрою або IP...",
     col_device: "Назва пристрою",
     col_type: "Тип",
