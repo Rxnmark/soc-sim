@@ -130,6 +130,7 @@ export const en = {
     en: "English",
     uk: "Ukrainian",
     general_desc: "Manage your system preferences and application settings.",
+    language_desc: "Change the interface language.",
     appearance: "Appearance",
     appearance_desc: "Customize how the application looks on your device.",
     theme_preference: "Theme Preference",
