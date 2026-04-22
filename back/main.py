@@ -144,7 +144,7 @@ async def create_security_log(log: SecurityLog, db: Session = Depends(get_db)):
     return {"message": "Лог збережено", "id": str(result.inserted_id)}
 
 @app.get("/api/v1/logs")
-async def get_security_logs(limit: int = 15):
+async def get_security_logs(limit: int = 1000):
     logs_cursor = security_logs_collection.find().sort("timestamp", -1).limit(limit)
     logs = await logs_cursor.to_list(length=limit)
     for log in logs:
@@ -277,17 +277,8 @@ async def reset_database(db: Session = Depends(get_db)):
     db.add_all([br1, br2, br3, br4, br5])
     db.commit()
 
-    # Clear and generate fresh logs for MongoDB
+    # Clear all logs for fresh simulation start
     await security_logs_collection.delete_many({})
-    initial_logs = [
-        {
-            "event_type": "System Ready",
-            "description": "Simulation game initialized. All systems online.",
-            "source_ip": "192.168.1.1",
-            "timestamp": datetime.now(timezone.utc)
-        }
-    ]
-    await security_logs_collection.insert_many(initial_logs)
 
     # Start the simulation engine
     await simulation_manager.start()

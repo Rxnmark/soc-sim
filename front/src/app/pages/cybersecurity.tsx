@@ -3,7 +3,7 @@ import { Sidebar } from "../components/sidebar-nav";
 import { EquipmentTable } from "../components/equipment-table";
 import { ExpertPanel } from "../components/expert-panel";
 import { Card } from "../components/ui/card";
-import { AlertTriangle, Shield, ServerOff, DollarSign, Zap } from "lucide-react";
+import { AlertTriangle, Shield, ServerOff, Zap } from "lucide-react";
 import { NotificationsPopover } from "../components/notifications-popover";
 import { useTranslation } from "../../context/LanguageContext";
 
@@ -151,33 +151,6 @@ export default function CybersecurityDashboard() {
                   </div>
                   <div className="flex items-center gap-2">
                     <span className="text-xs text-muted-foreground">{t('dashboard.maintenance_mode', 'Maintenance mode')}</span>
-                  </div>
-                </Card>
-
-                <Card className="p-6 bg-card border-border border-lime-500/30">
-                  <div className="flex items-start justify-between mb-3">
-                    <div>
-                      <p className="text-xs text-muted-foreground mb-1">{t('dashboard.financial_exposure_card', 'Financial Exposure')}</p>
-                      <p className="text-2xl text-lime-500 font-semibold">
-                        {apiData ? apiData.financial_exposure : "$0"}
-                      </p>
-                    </div>
-                    <div className="w-10 h-10 rounded-lg bg-lime-500/10 flex items-center justify-center">
-                      <DollarSign className="w-5 h-5 text-lime-500" />
-                    </div>
-                  </div>
-                  <div className="flex items-center gap-2">
-                    <span className="text-[10px] text-muted-foreground">
-                      {simStatus?.is_running ? (
-                        <span className="flex items-center gap-1">
-                          <span className="relative flex h-1.5 w-1.5">
-                            <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-lime-400 opacity-75"></span>
-                            <span className="relative inline-flex rounded-full h-1.5 w-1.5 bg-lime-500"></span>
-                          </span>
-                          Live
-                        </span>
-                      ) : "Simulation inactive"}
-                    </span>
                   </div>
                 </Card>
               </div>
