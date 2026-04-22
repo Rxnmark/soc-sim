@@ -129,18 +129,25 @@ export const NetworkTopologyMap = ({ assets }: NetworkTopologyMapProps) => {
     const roots = allIds.filter(id => !parentMap.has(id));
     roots.forEach(rootId => propagateOffline(rootId, false));
 
-    // 3. Create Nodes with updated data
-    const mappedNodes: Node[] = assets.map((asset, index) => ({
+    // 3. Create Nodes with stable ID-based positioning
+    // Pre-define fixed positions for known equipment to ensure layout stability
+    const fixedPositions: Record<number, { x: number; y: number }> = {};
+    const sortedAssets = [...assets].sort((a, b) => a.id - b.id);
+    sortedAssets.forEach((asset, index) => {
+      fixedPositions[asset.id] = {
+        x: (index % 4) * 300 + 50,
+        y: Math.floor(index / 4) * 250 + 50
+      };
+    });
+
+    const mappedNodes: Node[] = assets.map((asset) => ({
       id: asset.id.toString(),
       type: 'topologyNode',
       data: { 
         ...asset, 
         isAffected: affectedStatus.get(asset.id.toString()) && asset.status !== "Offline" 
       },
-      position: { 
-        x: (index % 4) * 300 + 50, 
-        y: Math.floor(index / 4) * 250 + 50 
-      },
+      position: fixedPositions[asset.id] || { x: 50, y: 50 },
     }));
 
     // 4. Create Edges
