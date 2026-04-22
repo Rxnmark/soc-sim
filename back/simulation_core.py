@@ -211,26 +211,69 @@ class SimulationCore:
     # Topology dependencies
     # ------------------------------------------------------------------
     async def _update_topology_dependencies(self, db: Session):
-        """If critical gateways go offline, mark IoT/Endpoint as Unreachable."""
-        gateway_offline = False
-        for gid in CRITICAL_GATEWAY_IDS:
-            eq = db.query(models.Equipment).filter(models.Equipment.id == gid).first()
-            if eq and eq.status in ("Offline", "Encrypted"):
-                gateway_offline = True
-                break
+        """Cascading offline status based on explicit network topology."""
+        # Explicit connections: [child_id, parent_id]
+        # Same topology as frontend for consistent behavior
+        explicit_connections = [
+            # Core network backbone
+            (2, 1),   # Core Switch Alpha → Main Gateway Router
+            # Enterprise network (via Core Switch)
+            (3, 2), (6, 2), (7, 2), (18, 2), (19, 2),
+            # Database tier
+            (4, 6), (5, 7),
+            # Endpoints
+            (16, 2), (17, 2),
+            # IoT network (via Guest WiFi Gateway)
+            (13, 20), (14, 20), (15, 20),
+            # ICS/OT network
+            (8, 1), (9, 8), (10, 8), (11, 8), (12, 8),
+        ]
 
-        if gateway_offline:
-            for eq in db.query(models.Equipment).all():
-                if eq.type in ("IoT", "Endpoint") and eq.status == "Online":
-                    if eq.id not in self.active_attacks:
-                        eq.status = "Unreachable"
-            db.commit()
-        else:
-            for eq in db.query(models.Equipment).all():
-                if eq.type in ("IoT", "Endpoint") and eq.status == "Unreachable":
-                    if eq.id not in self.active_attacks:
-                        eq.status = "Online"
-            db.commit()
+        # Build adjacency list
+        adj = {}
+        parent_map = {}
+        for child_id, parent_id in explicit_connections:
+            parent = db.query(models.Equipment).filter(models.Equipment.id == parent_id).first()
+            child = db.query(models.Equipment).filter(models.Equipment.id == child_id).first()
+            if not parent or not child:
+                continue
+
+            if parent_id not in adj:
+                adj[parent_id] = []
+            adj[parent_id].append(child_id)
+            parent_map[child_id] = parent_id
+
+        # Calculate cascading offline status
+        affected_status = {}
+
+        def propagate_offline(node_id: int, is_parent_offline: bool):
+            eq = db.query(models.Equipment).filter(models.Equipment.id == node_id).first()
+            if not eq:
+                return
+
+            currently_offline = eq.status in ("Offline", "Encrypted") or is_parent_offline
+            affected_status[node_id] = currently_offline
+
+            # Propagate to children
+            for child_id in adj.get(node_id, []):
+                propagate_offline(child_id, currently_offline)
+
+        # Find root nodes (no parents)
+        all_ids = {eq.id for eq in db.query(models.Equipment).all()}
+        roots = [rid for rid in all_ids if rid not in parent_map]
+
+        for root_id in roots:
+            propagate_offline(root_id, False)
+
+        # Update Unreachable status for IoT/Endpoint devices
+        for eq in db.query(models.Equipment).all():
+            if eq.type in ("IoT", "Endpoint") and eq.id not in self.active_attacks:
+                if affected_status.get(eq.id, False) and eq.status == "Online":
+                    eq.status = "Unreachable"
+                elif not affected_status.get(eq.id, False) and eq.status == "Unreachable":
+                    eq.status = "Online"
+
+        db.commit()
 
     # ------------------------------------------------------------------
     # Helpers

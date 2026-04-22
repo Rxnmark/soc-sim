@@ -85,28 +85,48 @@ interface NetworkTopologyMapProps {
 
 export const NetworkTopologyMap = ({ assets }: NetworkTopologyMapProps) => {
   const { nodes, edges } = useMemo(() => {
-    // 1. Build adjacency list and identify parents/children for propagation
+    // 1. Define explicit network topology with segmented networks
+    // Format: [child_id, parent_id]
+    // This creates a realistic hierarchical network structure
+    const explicitConnections: [number, number][] = [
+      // Core network backbone
+      [2, 1],   // Core Switch Alpha → Main Gateway Router
+      
+      // Enterprise network (via Core Switch)
+      [3, 2],   // Auth Server → Core Switch
+      [6, 2],   // Web Server Prod-1 → Core Switch
+      [7, 2],   // Web Server Prod-2 → Core Switch
+      [18, 2],  // Backup NAS Server → Core Switch
+      [19, 2],  // Email Exchange Server → Core Switch
+      
+      // Database tier (behind web servers)
+      [4, 6],   // Database Cluster Node 1 → Web Server Prod-1
+      [5, 7],   // Database Cluster Node 2 → Web Server Prod-2
+      
+      // Endpoints (via Core Switch / Auth Server domain)
+      [16, 2],  // CEO Workstation → Core Switch
+      [17, 2],  // DevSecOps Terminal → Core Switch
+      
+      // IoT network (via Guest WiFi Gateway)
+      [13, 20], // Perimeter Camera 01 → Guest WiFi Gateway
+      [14, 20], // Perimeter Camera 02 → Guest WiFi Gateway
+      [15, 20], // Smart HVAC Controller → Guest WiFi Gateway
+      
+      // ICS/OT network (SCADA Control Unit acts as ICS gateway)
+      [8, 1],   // SCADA Control Unit A → Main Gateway Router (dedicated ICS uplink)
+      [9, 8],   // Cooling System PLC → SCADA Control Unit
+      [10, 8],  // Wind Turbine 1 Telemetry → SCADA Control Unit
+      [11, 8],  // Wind Turbine 2 Telemetry → SCADA Control Unit
+      [12, 8],  // Solar Array B Inverter → SCADA Control Unit
+    ];
+
     const adj = new Map<string, string[]>();
     const parentMap = new Map<string, string>();
 
-    assets.forEach((asset) => {
-      const name = asset.name.toLowerCase();
-      const isCoreDevice = /router|switch|gateway|server|control unit|controller|hub|modem|scada/.test(name);
-      
-      if (!isCoreDevice) {
-        const parent = assets.find(p => 
-          /router|switch|gateway|server|control unit|controller|hub|modem|scada/.test(p.name.toLowerCase()) &&
-          p.id !== asset.id
-        );
-
-        if (parent) {
-          const parentId = parent.id.toString();
-          const childId = asset.id.toString();
-          if (!adj.has(parentId)) adj.set(parentId, []);
-          adj.get(parentId)!.push(childId);
-          parentMap.set(childId, parentId);
-        }
-      }
+    explicitConnections.forEach(([childId, parentId]) => {
+      if (!adj.has(parentId.toString())) adj.set(parentId.toString(), []);
+      adj.get(parentId.toString())!.push(childId.toString());
+      parentMap.set(childId.toString(), parentId.toString());
     });
 
     // 2. Calculate cascading offline status
@@ -150,35 +170,31 @@ export const NetworkTopologyMap = ({ assets }: NetworkTopologyMapProps) => {
       position: fixedPositions[asset.id] || { x: 50, y: 50 },
     }));
 
-    // 4. Create Edges
+    // 4. Create Edges from explicit connections
     const mappedEdges: Edge[] = [];
-    assets.forEach((asset) => {
-      const name = asset.name.toLowerCase();
-      const isCoreDevice = /router|switch|gateway|server|control unit|controller|hub|modem|scada/.test(name);
+    explicitConnections.forEach(([childId, parentId]) => {
+      const child = assets.find(a => a.id === childId);
+      const parent = assets.find(a => a.id === parentId);
+      if (!child || !parent) return;
 
-      if (!isCoreDevice) {
-        const parent = assets.find(p => 
-          /router|switch|gateway|server|control unit|controller|hub|modem|scada/.test(p.name.toLowerCase()) &&
-          p.id !== asset.id
-        );
+      const isParentOffline = parent.status === "Offline" || 
+        parent.status === "Encrypted" || 
+        parent.status === "Unreachable" ||
+        affectedStatus.get(parentId.toString());
 
-        if (parent) {
-          const isParentOffline = parent.status === "Offline";
-          mappedEdges.push({
-            id: `e${parent.id}-${asset.id}`,
-            source: parent.id.toString(),
-            target: asset.id.toString(),
-            type: 'smoothstep' as any,
-            animated: isParentOffline,
-            style: { 
-              stroke: isParentOffline ? '#ef4444' : 
-                (asset.risk_level === 'Critical' ? '#ef4444' : 
-                  (asset.risk_level === 'Medium' ? '#eab308' : '#64748b')),
-              strokeWidth: isParentOffline ? 3 : 1
-            },
-          });
-        }
-      }
+      mappedEdges.push({
+        id: `e${parentId}-${childId}`,
+        source: parentId.toString(),
+        target: childId.toString(),
+        type: 'smoothstep' as any,
+        animated: isParentOffline,
+        style: { 
+          stroke: isParentOffline ? '#ef4444' : 
+            (child.risk_level === 'Critical' ? '#ef4444' : 
+              (child.risk_level === 'Medium' ? '#eab308' : '#64748b')),
+          strokeWidth: isParentOffline ? 3 : 1
+        },
+      });
     });
 
     return { nodes: mappedNodes, edges: mappedEdges };
