@@ -155,7 +155,7 @@ export const NetworkTopologyMap = ({ assets }: NetworkTopologyMapProps) => {
     const sortedAssets = [...assets].sort((a, b) => a.id - b.id);
     sortedAssets.forEach((asset, index) => {
       fixedPositions[asset.id] = {
-        x: (index % 4) * 300 + 50,
+        x: (index % 4) * 600 + 50,
         y: Math.floor(index / 4) * 250 + 50
       };
     });
