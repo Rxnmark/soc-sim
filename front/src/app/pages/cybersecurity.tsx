@@ -1,11 +1,12 @@
-import { useEffect, useState } from "react";
+import { useEffect, useState, useMemo } from "react";
 import { Sidebar } from "../components/sidebar-nav";
 import { EquipmentTable } from "../components/equipment-table";
 import { ExpertPanel } from "../components/expert-panel";
 import { Card } from "../components/ui/card";
-import { AlertTriangle, Shield, ServerOff, Zap } from "lucide-react";
+import { AlertTriangle, Shield, ServerOff } from "lucide-react";
 import { NotificationsPopover } from "../components/notifications-popover";
 import { useTranslation } from "../../context/LanguageContext";
+import { isResolvedThreat } from "../components/expert-utils";
 
 export default function CybersecurityDashboard() {
   const { t } = useTranslation();
@@ -13,6 +14,7 @@ export default function CybersecurityDashboard() {
   const [simStatus, setSimStatus] = useState<any>(null);
   const [filterIp, setFilterIp] = useState<string | null>(null);
   const [logs, setLogs] = useState<any[]>([]);
+  const [archivedThreats, setArchivedThreats] = useState<Set<string>>(new Set());
 
   const fetchSummary = () => {
     fetch("http://127.0.0.1:8000/api/v1/risks/summary")
@@ -35,6 +37,16 @@ export default function CybersecurityDashboard() {
       .catch((err) => console.error("Error loading logs:", err));
   };
 
+  const fetchArchived = async () => {
+    try {
+      const res = await fetch("http://127.0.0.1:8000/api/v1/threats/archived");
+      const data = await res.json();
+      setArchivedThreats(new Set<string>(data.map((a: any) => String(a.source_ip))));
+    } catch (err) {
+      console.error("Error loading archived:", err);
+    }
+  };
+
   useEffect(() => {
     const savedTheme = localStorage.getItem("app-theme");
     if (savedTheme === "light") {
@@ -50,17 +62,22 @@ export default function CybersecurityDashboard() {
     fetchSummary();
     fetchSimStatus();
     fetchLogs();
+    fetchArchived();
     const dataInterval = setInterval(fetchSummary, 5000);
     const simInterval = setInterval(fetchSimStatus, 5000);
     const logInterval = setInterval(fetchLogs, 5000);
+    const archivedInterval = setInterval(fetchArchived, 5000);
     return () => {
       clearInterval(dataInterval);
       clearInterval(simInterval);
       clearInterval(logInterval);
+      clearInterval(archivedInterval);
     };
   }, []);
 
-  const displayedLogsCount = logs.length;
+  const displayedLogsCount = useMemo(() => {
+    return logs.filter(log => !isResolvedThreat(log.event_type) && !archivedThreats.has(log.source_ip)).length;
+  }, [logs, archivedThreats]);
 
   return (
     <div className="h-screen w-full flex bg-background overflow-hidden">
@@ -73,25 +90,6 @@ export default function CybersecurityDashboard() {
           </div>
           <div className="flex items-center gap-4">
             <NotificationsPopover apiData={apiData} displayedLogsCount={displayedLogsCount} />
-
-            {/* Simulation Status Indicator */}
-            {simStatus?.is_running && (
-              <div className={`flex items-center gap-2 px-3 py-2 rounded-lg border ${
-                simStatus.phase === "escalated" 
-                  ? "bg-red-500/10 border-red-500/20 shadow-[0_0_10px_rgba(239,68,68,0.2)]" 
-                  : "bg-amber-500/10 border-amber-500/20"
-              }`}>
-                <Zap className={`w-4 h-4 ${simStatus.phase === "escalated" ? "text-red-500 animate-pulse" : "text-amber-500"}`} />
-                <div className="flex flex-col items-start">
-                  <span className={`text-xs font-medium ${simStatus.phase === "escalated" ? "text-red-500" : "text-amber-500"}`}>
-                    {simStatus.phase === "escalated" ? t('dashboard.simulation_escalated', 'Escalation') : t('dashboard.simulation_normal', 'Normal')}
-                  </span>
-                  <span className="text-[10px] text-muted-foreground">
-                    {simStatus.active_attacks_count > 0 ? `${simStatus.active_attacks_count} inactive` : 'No attacks'}
-                  </span>
-                </div>
-              </div>
-            )}
 
             {apiData?.critical_threats > 0 ? (
               <div className="flex items-center gap-2 px-3 py-2 rounded-lg bg-red-500/10 border border-red-500/20 shadow-[0_0_10px_rgba(239,68,68,0.2)]">
@@ -169,7 +167,7 @@ export default function CybersecurityDashboard() {
               </div>
 
               <div className="flex-1 min-h-0 flex flex-col rounded-xl border border-border bg-card overflow-hidden">
-                <EquipmentTable filterIp={filterIp} setFilterIp={setFilterIp} />
+                <EquipmentTable filterIp={filterIp} setFilterIp={setFilterIp} simStatus={simStatus} />
               </div>
             </div>
 
