@@ -89,6 +89,13 @@
 | `front/project_structure.txt` | Згенерована структура проекту. |
 | `package.json` | Кореневий package.json з залежністю `reactflow`. |
 
+## 🔧 Recent Changes
+### 2026-04-23: Зміна лічильників на сторінці Cybersecurity Dashboard
+- Замінено "active" на "inactive" в підписі Escalation (cybersecurity.tsx рядок 90) — тепер показує "20 inactive" замість "20 active" (відображає кількість неактивного обладнання).
+- Замінено лічильник на іконці дзвоника (NotificationsPopover) з суми карток (11+9+14=34 actionable) на кількість логів з expert-panel (displayedLogsCount, зараз 26).
+- CybersecurityDashboard тепер підтягує логи з `/api/v1/logs` та передає `displayedLogsCount` у NotificationsPopover.
+- NotificationsPopover приймає опційний проп `displayedLogsCount` — якщо не передано, використовує стару логіку (сума карток).
+
 ## 🐛 Known Issues & Fixes
 
 ### 2026-04-23: Auto-fix не скидав active_attacks

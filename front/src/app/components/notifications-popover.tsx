@@ -3,7 +3,7 @@ import { Popover, PopoverContent, PopoverTrigger } from "./ui/popover";
 import { Button } from "./ui/button";
 import { Bell, CheckCheck, AlertTriangle, Shield, ServerOff } from "lucide-react";
 
-export function NotificationsPopover({ apiData }: { apiData: any }) {
+export function NotificationsPopover({ apiData, displayedLogsCount }: { apiData: any; displayedLogsCount?: number }) {
   // Зберігаємо типи загроз, які користувач "прочитав" (приховав)
   const [dismissed, setDismissed] = useState<string[]>([]);
 
@@ -50,7 +50,7 @@ export function NotificationsPopover({ apiData }: { apiData: any }) {
   }
 
   // Загальна кількість подій для бейджика
-  const totalAlerts = activeAlerts.reduce((sum, alert) => sum + alert.count, 0);
+  const totalAlerts = displayedLogsCount !== undefined ? displayedLogsCount : activeAlerts.reduce((sum, alert) => sum + alert.count, 0);
 
   const markAllAsRead = () => {
     setDismissed(["critical", "medium", "offline"]);

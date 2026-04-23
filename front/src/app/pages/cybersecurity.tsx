@@ -12,6 +12,7 @@ export default function CybersecurityDashboard() {
   const [apiData, setApiData] = useState<any>(null);
   const [simStatus, setSimStatus] = useState<any>(null);
   const [filterIp, setFilterIp] = useState<string | null>(null);
+  const [logs, setLogs] = useState<any[]>([]);
 
   const fetchSummary = () => {
     fetch("http://127.0.0.1:8000/api/v1/risks/summary")
@@ -25,6 +26,13 @@ export default function CybersecurityDashboard() {
       .then((res) => res.json())
       .then((data) => setSimStatus(data))
       .catch((err) => console.error("Error fetching sim status:", err));
+  };
+
+  const fetchLogs = () => {
+    fetch("http://127.0.0.1:8000/api/v1/logs")
+      .then((res) => res.json())
+      .then((data) => setLogs(data))
+      .catch((err) => console.error("Error loading logs:", err));
   };
 
   useEffect(() => {
@@ -41,13 +49,18 @@ export default function CybersecurityDashboard() {
     
     fetchSummary();
     fetchSimStatus();
+    fetchLogs();
     const dataInterval = setInterval(fetchSummary, 5000);
     const simInterval = setInterval(fetchSimStatus, 5000);
+    const logInterval = setInterval(fetchLogs, 5000);
     return () => {
       clearInterval(dataInterval);
       clearInterval(simInterval);
+      clearInterval(logInterval);
     };
   }, []);
+
+  const displayedLogsCount = logs.length;
 
   return (
     <div className="h-screen w-full flex bg-background overflow-hidden">
@@ -59,7 +72,7 @@ export default function CybersecurityDashboard() {
             <p className="text-xs text-muted-foreground">{t('dashboard.subtitle', 'Real-time threat monitoring')}</p>
           </div>
           <div className="flex items-center gap-4">
-            <NotificationsPopover apiData={apiData} />
+            <NotificationsPopover apiData={apiData} displayedLogsCount={displayedLogsCount} />
 
             {/* Simulation Status Indicator */}
             {simStatus?.is_running && (
@@ -74,7 +87,7 @@ export default function CybersecurityDashboard() {
                     {simStatus.phase === "escalated" ? t('dashboard.simulation_escalated', 'Escalation') : t('dashboard.simulation_normal', 'Normal')}
                   </span>
                   <span className="text-[10px] text-muted-foreground">
-                    {simStatus.active_attacks_count > 0 ? `${simStatus.active_attacks_count} active` : 'No attacks'}
+                    {simStatus.active_attacks_count > 0 ? `${simStatus.active_attacks_count} inactive` : 'No attacks'}
                   </span>
                 </div>
               </div>
