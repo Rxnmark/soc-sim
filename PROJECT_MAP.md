@@ -97,6 +97,7 @@
 - CybersecurityDashboard тепер підтягує логи з `/api/v1/logs` та архівовані загрози з `/api/v1/threats/archived`.
 - displayedLogsCount у NotificationsPopover фільтрує: `!isResolvedThreat(log.event_type) && !archivedThreats.has(log.source_ip)`.
 - NotificationsPopover приймає опційний проп `displayedLogsCount` — якщо не передано, використовує стару логіку (сума карток).
+- Escalation видалено з UI (користувач вирішив, що він зайвий).
 
 ## 🐛 Known Issues & Fixes
 

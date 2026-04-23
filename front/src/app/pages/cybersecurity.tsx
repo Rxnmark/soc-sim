@@ -11,7 +11,6 @@ import { isResolvedThreat } from "../components/expert-utils";
 export default function CybersecurityDashboard() {
   const { t } = useTranslation();
   const [apiData, setApiData] = useState<any>(null);
-  const [simStatus, setSimStatus] = useState<any>(null);
   const [filterIp, setFilterIp] = useState<string | null>(null);
   const [logs, setLogs] = useState<any[]>([]);
   const [archivedThreats, setArchivedThreats] = useState<Set<string>>(new Set());
@@ -21,13 +20,6 @@ export default function CybersecurityDashboard() {
       .then((res) => res.json())
       .then((data) => setApiData(data))
       .catch((err) => console.error("Error fetching data:", err));
-  };
-
-  const fetchSimStatus = () => {
-    fetch("http://127.0.0.1:8000/api/v1/simulation/status")
-      .then((res) => res.json())
-      .then((data) => setSimStatus(data))
-      .catch((err) => console.error("Error fetching sim status:", err));
   };
 
   const fetchLogs = () => {
@@ -60,16 +52,13 @@ export default function CybersecurityDashboard() {
     }
     
     fetchSummary();
-    fetchSimStatus();
     fetchLogs();
     fetchArchived();
     const dataInterval = setInterval(fetchSummary, 5000);
-    const simInterval = setInterval(fetchSimStatus, 5000);
     const logInterval = setInterval(fetchLogs, 5000);
     const archivedInterval = setInterval(fetchArchived, 5000);
     return () => {
       clearInterval(dataInterval);
-      clearInterval(simInterval);
       clearInterval(logInterval);
       clearInterval(archivedInterval);
     };
@@ -167,7 +156,7 @@ export default function CybersecurityDashboard() {
               </div>
 
               <div className="flex-1 min-h-0 flex flex-col rounded-xl border border-border bg-card overflow-hidden">
-                <EquipmentTable filterIp={filterIp} setFilterIp={setFilterIp} simStatus={simStatus} />
+                <EquipmentTable filterIp={filterIp} setFilterIp={setFilterIp} />
               </div>
             </div>
 
