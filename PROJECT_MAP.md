@@ -89,6 +89,13 @@
 | `front/project_structure.txt` | Згенерована структура проекту. |
 | `package.json` | Кореневий package.json з залежністю `reactflow`. |
 
+## 🐛 Known Issues & Fixes
+
+### 2026-04-23: Auto-fix не скидав active_attacks
+При натисканні "Усунути загрозу" (експерт-панель) викликався `/api/v1/actions/block`, який встановлював статус обладнання в "Rebooting" і запускав background task `reboot_equipment`. Після 5 секунд статус змінювався на "Online", але `simulation_manager.active_attacks` все ще містив запис для цього пристрою. Це призводило до того, що `will_be_attacked = can_attack and not in_active_attacks` завжди повертало `false`, і пристрій більше не міг бути атакованим.
+
+**Виправлення:** Додано видалення з `active_attacks` в `reboot_equipment()` та `_apply_auto_fix()` у `back/simulation_endpoints.py`. Також виправлено виклик `_update_topology_dependencies(db)` (замість `self.`).
+
 ## ⚙️ Tech Stack & Dependencies
 
 ### Backend

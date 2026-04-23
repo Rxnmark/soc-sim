@@ -57,6 +57,12 @@ def register_simulation_routes(app):
             if eq:
                 eq.status = "Online"
                 db.commit()
+
+                # Remove from active_attacks if present so the device can be attacked again
+                if equipment_id in simulation_manager.active_attacks:
+                    del simulation_manager.active_attacks[equipment_id]
+
+                await simulation_manager._update_topology_dependencies(db)
         finally:
             db.close()
 
@@ -76,6 +82,9 @@ def register_simulation_routes(app):
                     models.Equipment.id == active_risk.equipment_id
                 ).first()
         if equipment:
+            # Remove from active_attacks immediately so the device can be attacked again
+            if equipment.id in simulation_manager.active_attacks:
+                del simulation_manager.active_attacks[equipment.id]
             equipment.status = "Rebooting"
             db.query(models.RiskAssessment).filter(
                 models.RiskAssessment.equipment_id == equipment.id,
