@@ -4,8 +4,8 @@ import { useTranslation } from "../../context/LanguageContext";
 export function getCriticalityRank(eventType: string): number {
   const type = eventType.toLowerCase();
   // Critical (red) - DDoS attacks causing system disruptions, equipment going offline
-  // Check DDoS subtypes first: slowloris, udp flood, dns amplification, ntp amplification
-  if ("slowloris udp flood dns amplification ntp amplification ddos".split(" ").some(k => type.includes(k))) return 0;
+  // Check DDoS subtypes first: syn flood, traffic flood, slowloris, udp flood, dns amplification, ntp amplification
+  if ("syn flood traffic flood slowloris udp flood dns amplification ntp amplification ddos".split(" ").some(k => type.includes(k))) return 0;
   // Critical (red) - any attack that causes equipment to go offline/encrypted
   if ("offline encrypted".split(" ").some(k => type.includes(k))) return 0;
   // Significant (orange) - ransomware, data leaks, spyware, encryption attacks (ENCRYPTED status without equipment disruption)
@@ -32,60 +32,66 @@ export function isResolvedThreat(eventType: string): boolean {
 export function translateLogEventType(t: (key: string, fallback: string) => string, eventType: string): string {
   const type = eventType.toLowerCase();
   // Check DDoS subtypes first
-  if (type.includes("slowloris")) return t("threats.slowloris", "Slowloris DDoS");
-  if (type.includes("udp flood")) return t("threats.udp_flood", "UDP Flood");
-  if (type.includes("dns amplification")) return t("threats.dns_amplification", "DNS Amplification");
-  if (type.includes("ntp amplification")) return t("threats.ntp_amplification", "NTP Amplification");
-  if (type.includes("ddos")) return t("threats.ddos", "DDoS Attack");
-  if (type.includes("ransomware")) return t("threats.ransomware", "Ransomware");
-  if (type.includes("exfiltration")) return t("threats.exfiltration", "Data Exfiltration");
-  if (type.includes("spyware")) return t("threats.spyware", "Spyware");
-  if (type.includes("data leak")) return t("threats.data_leak", "Data Leak");
-  if (type.includes("covert channel")) return t("threats.covert_channel", "Covert Channel");
-  if (type.includes("cryptolocker")) return t("threats.cryptolocker", "CryptoLocker");
-  if (type.includes("encryption attack")) return t("threats.encryption_attack", "Encryption Attack");
-  if (type.includes("scan")) return t("threats.scan", "Port Scan");
-  if (type.includes("injection")) return t("threats.injection", "SQL Injection");
-  if (type.includes("unauthorized")) return t("threats.unauthorized", "Unauthorized Access");
-  if (type.includes("security warning")) return t("threats.security_warning", "Security Warning");
-  if (type.includes("drift")) return t("threats.drift", "DNS Drift");
-  if (type.includes("antivirus")) return t("threats.antivirus", "Antivirus Alert");
-  if (type.includes("port")) return t("threats.port_scan", "Port Scan");
-  if (type.includes("bruteforce")) return t("threats.bruteforce", "Brute-force");
-  if (type.includes("blocked")) return t("threats.blocked", "Blocked");
-  if (type.includes("auto-fix") || type.includes("applied")) return t("threats.auto_fix", "Auto-Fix Applied");
-  if (type.includes("neutralized")) return t("threats.neutralized", "Neutralized");
-  if (type.includes("success")) return t("threats.success", "Success");
+  if (type.includes("syn flood")) return t("logEventTypes.syn_flood_detected", "SYN Flood Attack");
+  if (type.includes("traffic flood")) return t("logEventTypes.traffic_flood_detected", "Traffic Flood Attack");
+  if (type.includes("slowloris")) return t("logEventTypes.slowloris_detected", "Slowloris Attack");
+  if (type.includes("udp flood")) return t("logEventTypes.udp_flood_detected", "UDP Flood Attack");
+  if (type.includes("dns amplification")) return t("logEventTypes.dns_amplification_detected", "DNS Amplification Attack");
+  if (type.includes("ntp amplification")) return t("logEventTypes.ntp_amplification_detected", "NTP Amplification Attack");
+  if (type.includes("http flood")) return t("logEventTypes.http_flood_detected", "HTTP Flood Attack");
+  if (type.includes("ddos")) return t("logEventTypes.ddos_attack", "DDoS Attack");
+  if (type.includes("ransomware")) return t("logEventTypes.ransomware_detected", "Ransomware Detected");
+  if (type.includes("exfiltration")) return t("logEventTypes.data_exfiltration_detected", "Data Exfiltration");
+  if (type.includes("spyware")) return t("logEventTypes.spyware_detected", "Spyware Detected");
+  if (type.includes("data leak")) return t("logEventTypes.data_leak_detected", "Data Leak Detected");
+  if (type.includes("covert channel")) return t("logEventTypes.covert_channel_detected", "Covert Channel Detected");
+  if (type.includes("cryptolocker")) return t("logEventTypes.cryptolocker_detected", "CryptoLocker");
+  if (type.includes("encryption attack")) return t("logEventTypes.encryption_attack_detected", "Encryption Attack");
+  if (type.includes("port scan")) return t("logEventTypes.port_scan_activity", "Port Scan Activity");
+  if (type.includes("scan")) return t("logEventTypes.port_scan_activity", "Port Scan Activity");
+  if (type.includes("injection")) return t("logEventTypes.sql_injection_attempt", "SQL Injection Attempt");
+  if (type.includes("unauthorized")) return t("logEventTypes.unauthorized_access_attempt", "Unauthorized Access Attempt");
+  if (type.includes("security warning")) return t("logEventTypes.security_warning", "Security Warning");
+  if (type.includes("drift")) return t("logEventTypes.configuration_drift_detected", "Configuration Drift Detected");
+  if (type.includes("antivirus")) return t("logEventTypes.outdated_antivirus_signature", "Outdated Antivirus Signature");
+  if (type.includes("bruteforce")) return t("logEventTypes.brute_force_detected", "Brute-force Attack");
+  if (type.includes("blocked")) return t("logEventTypes.blocked_connection", "Blocked Connection");
+  if (type.includes("auto-fix") || type.includes("applied")) return t("logEventTypes.auto_fix_applied", "Auto-Fix Applied");
+  if (type.includes("neutralized")) return t("logEventTypes.threat_neutralized", "Threat Neutralized");
+  if (type.includes("success")) return t("logEventTypes.success", "Success");
   return eventType;
 }
 
 // Get event description
 export function getEventDescription(t: (key: string, fallback: string) => string, eventType: string): string {
   const type = eventType.toLowerCase();
-  if (type.includes("slowloris")) return t("logs.slowloris_desc", "Slowloris DDoS attack detected - connection exhaustion");
-  if (type.includes("udp flood")) return t("logs.udp_flood_desc", "UDP Flood attack - bandwidth saturation");
-  if (type.includes("dns amplification")) return t("logs.dns_amp_desc", "DNS Amplification attack detected");
-  if (type.includes("ntp amplification")) return t("logs.ntp_amp_desc", "NTP Amplification attack detected");
-  if (type.includes("ddos")) return t("logs.ddos_desc", "DDoS attack detected - service disruption");
-  if (type.includes("ransomware")) return t("logs.ransomware_desc", "Ransomware detected - files encrypted");
-  if (type.includes("exfiltration")) return t("logs.exfiltration_desc", "Data exfiltration attempt detected");
-  if (type.includes("spyware")) return t("logs.spyware_desc", "Spyware detected on system");
-  if (type.includes("data leak")) return t("logs.data_leak_desc", "Data leak detected");
-  if (type.includes("covert channel")) return t("logs.covert_channel_desc", "Covert channel communication detected");
-  if (type.includes("cryptolocker")) return t("logs.cryptolocker_desc", "CryptoLocker ransomware detected");
-  if (type.includes("encryption attack")) return t("logs.encryption_attack_desc", "Encryption attack detected");
-  if (type.includes("scan")) return t("logs.scan_desc", "Port scanning activity detected");
-  if (type.includes("injection")) return t("logs.injection_desc", "SQL Injection attempt detected");
-  if (type.includes("unauthorized")) return t("logs.unauthorized_desc", "Unauthorized access attempt detected");
-  if (type.includes("security warning")) return t("logs.security_warning_desc", "Security warning triggered");
-  if (type.includes("drift")) return t("logs.drift_desc", "DNS drift detected");
-  if (type.includes("antivirus")) return t("logs.antivirus_desc", "Antivirus alert triggered");
-  if (type.includes("port")) return t("logs.port_scan_desc", "Port scan detected");
-  if (type.includes("bruteforce")) return t("logs.bruteforce_desc", "Brute-force attack detected");
-  if (type.includes("blocked")) return t("logs.blocked_desc", "Blocked connection attempt");
-  if (type.includes("auto-fix") || type.includes("applied")) return t("logs.auto_fix_desc", "System auto-fixed the issue");
-  if (type.includes("neutralized")) return t("logs.neutralized_desc", "Threat neutralized");
-  if (type.includes("success")) return t("logs.success_desc", "Success");
+  if (type.includes("syn flood")) return t("logEventTypes.syn_flood_desc", "SYN flood attack — exhausting server connection table with half-open connections");
+  if (type.includes("traffic flood")) return t("logEventTypes.traffic_flood_desc", "Massive traffic flood overwhelming the target network");
+  if (type.includes("slowloris")) return t("logEventTypes.slowloris_desc", "Web server attack using delayed requests to exhaust resources");
+  if (type.includes("udp flood")) return t("logEventTypes.udp_flood_desc", "Massive UDP packet flooding to overwhelm network equipment");
+  if (type.includes("dns amplification")) return t("logEventTypes.dns_amplification_desc", "Exploiting DNS servers to amplify attack traffic");
+  if (type.includes("ntp amplification")) return t("logEventTypes.ntp_amplification_desc", "Exploiting NTP servers to amplify attack traffic");
+  if (type.includes("http flood")) return t("logEventTypes.http_flood_desc", "Massive legitimate HTTP requests flooding to exhaust web server resources");
+  if (type.includes("ddos")) return t("logEventTypes.ddos_attack_desc", "Massive DDoS traffic detected targeting server overload");
+  if (type.includes("ransomware")) return t("logEventTypes.ransomware_desc", "Ransomware encryption activity detected - critical files may be at risk");
+  if (type.includes("exfiltration")) return t("logEventTypes.data_exfiltration_desc", "Unauthorized transmission of confidential data detected outside the network");
+  if (type.includes("spyware")) return t("logEventTypes.spyware_desc", "Hidden malicious process detected collecting sensitive information");
+  if (type.includes("data leak")) return t("logEventTypes.data_leak_desc", "Unauthorized transmission of confidential data detected outside the network");
+  if (type.includes("covert channel")) return t("logEventTypes.covert_channel_desc", "Covert channel communication detected");
+  if (type.includes("cryptolocker")) return t("logEventTypes.cryptolocker_desc", "Ransomware encryption activity detected - critical files may be at risk");
+  if (type.includes("encryption attack")) return t("logEventTypes.encryption_attack_desc", "Ransomware encryption activity detected - critical files may be at risk");
+  if (type.includes("port scan")) return t("logEventTypes.port_scan_desc", "Reconnaissance port scanning activity detected from external source");
+  if (type.includes("scan")) return t("logEventTypes.port_scan_desc", "Reconnaissance port scanning activity detected from external source");
+  if (type.includes("injection")) return t("logEventTypes.sql_injection_desc", "Malicious SQL injection payload detected in form input fields");
+  if (type.includes("unauthorized")) return t("logEventTypes.unauthorized_access_desc", "Unauthorized login attempt detected from external IP address");
+  if (type.includes("security warning")) return t("logEventTypes.security_warning_desc", "Suspicious activity detected requiring investigation");
+  if (type.includes("drift")) return t("logEventTypes.configuration_drift_desc", "Security configuration has drifted from baseline policy");
+  if (type.includes("antivirus")) return t("logEventTypes.outdated_antivirus_desc", "Antivirus signature database is outdated and needs immediate update");
+  if (type.includes("bruteforce")) return t("logEventTypes.brute_force_desc", "Multiple failed authentication attempts from unauthorized source");
+  if (type.includes("blocked")) return t("logEventTypes.blocked_connection_desc", "Unauthorized access attempt blocked by firewall");
+  if (type.includes("auto-fix") || type.includes("applied")) return t("logEventTypes.auto_fix_desc", "Automated security remediation successfully applied");
+  if (type.includes("neutralized")) return t("logEventTypes.threat_neutralized_desc", "Threat successfully neutralized");
+  if (type.includes("success")) return t("logEventTypes.success", "Success");
   return eventType;
 }
 
@@ -101,7 +107,7 @@ export function getLogStyle(eventType: string): { badge: string; color: string; 
   if (type.includes("auto-fix") || type.includes("applied") || type.includes("success") || type.includes("neutralized")) {
     return { badge: "bg-emerald-500/10 text-emerald-500 border-emerald-500/20", color: "text-emerald-500", icon: null };
   }
-  if ("ddos slowloris udp flood dns amplification ntp amplification offline encrypted".split(" ").some(k => type.includes(k))) {
+  if ("syn flood traffic flood ddos slowloris udp flood dns amplification ntp amplification offline encrypted".split(" ").some(k => type.includes(k))) {
     return { badge: "bg-red-500/10 text-red-500 border-red-500/20", color: "text-red-500", icon: null };
   }
   if ("ransomware exfiltration spyware data leak covert channel cryptolocker encryption".split(" ").some(k => type.includes(k))) {
