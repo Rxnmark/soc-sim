@@ -48,36 +48,37 @@ export function EquipmentTable({ filterIp, setFilterIp, simStatus }: Props) {
 
   return (
     <div className="bg-card border border-border rounded-lg overflow-hidden flex flex-col h-full">
-      <div className="p-4 border-b border-border bg-muted/50 flex items-center justify-between shrink-0">
+      <div className="p-4 border-b border-border bg-muted/50 flex flex-col gap-3 shrink-0">
         <h2 className="text-lg font-semibold text-card-foreground">{t('equipment.title', 'Monitored Equipment')}</h2>
-
-        {simStatus?.is_running && (
-          <div className={`flex items-center gap-2 px-3 py-2 rounded-lg border ${
-            simStatus.phase === "escalated" 
-              ? "bg-red-500/10 border-red-500/20 shadow-[0_0_10px_rgba(239,68,68,0.2)]" 
-              : "bg-amber-500/10 border-amber-500/20"
-          }`}>
-            <Zap className={`w-4 h-4 ${simStatus.phase === "escalated" ? "text-red-500 animate-pulse" : "text-amber-500"}`} />
-            <div className="flex flex-col items-start">
-              <span className={`text-xs font-medium ${simStatus.phase === "escalated" ? "text-red-500" : "text-amber-500"}`}>
-                {simStatus.phase === "escalated" ? t('dashboard.simulation_escalated', 'Escalation') : t('dashboard.simulation_normal', 'Normal')}
-              </span>
-              <span className="text-[10px] text-muted-foreground">
-                {simStatus.active_attacks_count > 0 ? `${simStatus.active_attacks_count} unsafe` : 'No attacks'}
-              </span>
-            </div>
+        <div className="flex items-center justify-between">
+          <div className="relative">
+            <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
+            <input
+              type="text"
+              placeholder={t('equipment.search_placeholder', 'Search device or IP...')}
+              value={searchQuery}
+              onChange={(e) => setSearchQuery(e.target.value)}
+              className="pl-9 pr-4 py-1.5 rounded-md bg-background border border-border text-sm text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-1 focus:ring-primary w-64 transition-shadow"
+            />
           </div>
-        )}
-        
-        <div className="relative">
-          <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
-          <input
-            type="text"
-            placeholder={t('equipment.search_placeholder', 'Search device or IP...')}
-            value={searchQuery}
-            onChange={(e) => setSearchQuery(e.target.value)}
-            className="pl-9 pr-4 py-1.5 rounded-md bg-background border border-border text-sm text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-1 focus:ring-primary w-64 transition-shadow"
-          />
+
+          {simStatus?.is_running && (
+            <div className={`flex items-center gap-2 px-3 py-2 rounded-lg border ${
+              simStatus.phase === "escalated" 
+                ? "bg-red-500/10 border-red-500/20 shadow-[0_0_10px_rgba(239,68,68,0.2)]" 
+                : "bg-amber-500/10 border-amber-500/20"
+            }`}>
+              <Zap className={`w-4 h-4 ${simStatus.phase === "escalated" ? "text-red-500 animate-pulse" : "text-amber-500"}`} />
+              <div className="flex flex-col items-start">
+                <span className={`text-xs font-medium ${simStatus.phase === "escalated" ? "text-red-500" : "text-amber-500"}`}>
+                  {simStatus.phase === "escalated" ? t('dashboard.simulation_escalated', 'Escalation') : t('dashboard.simulation_normal', 'Normal')}
+                </span>
+                <span className="text-[10px] text-muted-foreground">
+                  {simStatus.active_attacks_count > 0 ? `${simStatus.active_attacks_count} unsafe` : 'No attacks'}
+                </span>
+              </div>
+            </div>
+          )}
         </div>
       </div>
       
