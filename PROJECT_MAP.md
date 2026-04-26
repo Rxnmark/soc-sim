@@ -54,11 +54,12 @@
 | `reports.tsx` | Placeholder-сторінка для звітів. |
 | `team.tsx` | Placeholder-сторінка для управління командою. |
 | `settings.tsx` | Сторінка глобальних налаштувань. |
-| `cyber-threats.tsx` | **Threat Statistics** — сторінка статистики загроз з трьома колонками (Незначні, Потребують уваги, Критичні). Відображення логів атак за поточну добу, фільтрація "зелених" (усунутих) загроз, категоризація за критичністю. Кольорове кодування: червоний (DDoS), помаранчевий (ransomware, data leaks), жовтий (scan, injection), зелений (resolved). |
-| `cyber-assets.tsx` | Placeholder-сторінка для управління активами. |
+| `cyber-threats.tsx` | **Threat Statistics** — сторінка статистики загроз з трьома колонками (Незначні, Потребують уваги, Критичні). Використовує ColumnLogs з cyber-threats-components.tsx. NotificationsPopover з riskSummary + displayedLogsCount. API: `/api/v1/threats/statistics`, `/api/v1/logs`, `/api/v1/risks/summary`, `/api/v1/threats/archived`. |
+| `cyber-threats-components.tsx` | **Компоненти для cyber-threats** — `ColumnLogs` (колонка з логами загроз), `LogCard` (картка події), `ArchivedLogCard` (архівована картка). |
+| `cyber-assets.tsx` | **Cyber Assets (Реєстр захисту активів)** — інтерактивна мапа мережевого обладнання (NetworkTopologyMap). Хедер з пошуком, кнопкою оновлення та NotificationsPopover. API: `/api/v1/equipment`, `/api/v1/logs`, `/api/v1/risks/summary`, `/api/v1/threats/archived`. Автооновлення кожні 5 сек. displayedLogsCount фільтрує логи: `!isResolvedLog && !archivedThreats && classifyThreat !== "warning"`. |
 | `cyber-access.tsx` | Placeholder-сторінка для контролю доступу. |
 | `cyber-data.tsx` | Placeholder-сторінка для управління даними. |
-| `cyber-analytics.tsx` | Placeholder-сторінка для кібераналітики. |
+| `cyber-analytics.tsx` | **Cyber Analytics** — графік атак у реальному часі (Recharts LineChart). Три лінії: Warning (жовта), Active (помаранчева), Critical (червона). Базові точки генеруються з `statistics.hourly` (00:00 до поточної години). Live-точки додаються кожні 60 сек. X-вісь: 00:00, погодинні мітки, остання точка. Без точок (`dot={false}`). API: `/api/v1/threats/statistics`, `/api/v1/logs`. |
 | `cyber-settings.tsx` | Placeholder-сторінка для налаштувань кібербезпеки. |
 | `not-found.tsx` | 404 сторінка. |
 | `placeholder.tsx` | **Універсальний placeholder-компонент** — відображає повідомлення "Page Under Construction" з кнопкою повернення. Використовує Sidebar для навігації. |
@@ -69,13 +70,13 @@
 | `sidebar-nav.tsx` | **Бокова навігація** з модульною структурою (Cyber Defense / Risk & Compliance). Система ролей (CEO, CISO, PM) з демо-логіном через модальне вікно. Блокування доступу для ролей без прав. Переклади через `useTranslation`. |
 | `login-modal.tsx` | **Модальне вікно вибору ролі** — `LoginModal` компонент з профілями користувачів (CEO/CISO/PM), кольоровими аватарами, перекладеними підписами. Імпортує `USERS_DATA` з `sidebar-data`. |
 | `sidebar-data.ts` | **Дані навігації** — визначення `CYBER_NAV_ITEMS` та `RISK_NAV_ITEMS` з translation keys (не перекладеними значеннями). `NavItem` тип з `React.ComponentType` іконками. `USERS_DATA` для демо-логін системи. |
-| `expert-utils.tsx` | **Утиліти для експертної системи** — `LogStyle` тип, `getLogStyle()` для кольору подій (red/yellow/emerald), `translateLogEventType()` для перекладу типу події, `getEventDescription()` для отримання опису, `mapEventTypeToKey()` маппінг на translation key, `formatDate()` форматування часу. Підтримує мапінг для DDoS підтипів (Slowloris, UDP Flood, DNS Amplification), ransomware, stealth загроз. |
+| `expert-utils.tsx` | **Утиліти для експертної системи** — `LogStyle` тип, `getLogStyle()` для кольору подій (red/yellow/emerald), `translateLogEventType()` для перекладу типу події, `getEventDescription()` для отримання опису, `mapEventTypeToKey()` маппінг на translation key, `formatDate()` форматування часу, `classifyThreat()` категоризація загроз (warning/active/critical). Підтримує мапінг для DDoS підтипів (Slowloris, UDP Flood, DNS Amplification), ransomware, stealth загроз. |
 | `risk-matrix.tsx` | **Матриця ризиків 5×5** (Probability × Impact). Кольорове кодування: червоний (≥15), жовтий (≥8), зелений (<8). Крапки показують ризики за категоріями (Cyber, Operational, Financial). Підсвічування результатів пошуку. |
 | `critical-threats.tsx` | **Топ критичних загроз** — список активних ризиків, відсортованих за score (probability × impact). Фінансовий вплив розраховується як `impact * 750000 + 45000`. Пошук за назвою/категорією. |
 | `equipment-table.tsx` | **Таблиця обладнання** — список моніторених пристроїв з фільтрацією по IP, пошуком, сортуванням за risk_level. Статуси: Online, Rebooting, Offline, Unreachable, Encrypted. Кнопка фільтрації логів по IP. Автооновлення кожні 5 сек. |
 | `expert-panel.tsx` | **Експертна панель** — live-логи безпеки з MongoDB. Детальний перегляд подій з автоматичним визначенням типу (unauthorized, SQL injection, port scan тощо). Кнопка "Apply Fix" для блокування IP через API. Використовує `expert-utils.tsx` для перекладу. Картки загроз сортуються за критичністю (DDoS → Critical, ransomware → High, scan → Medium), з кольоровим фоновим кодуванням. |
 | `export-modal.tsx` | Модальне вікно експорту звітів. |
-| `notifications-popover.tsx` | Спливаючі нотифікації на основі даних з API. |
+| `notifications-popover.tsx` | **Спливаючі нотифікації** — дзвіночок з popover для системних сповіщень. Приймає `apiData` (riskSummary з `critical_threats`, `high_risks`, `sensors_offline`) та опційний `displayedLogsCount` для бейджа. Відображає активні загрози з іконками, кольоровим кодуванням, кнопкою "Mark all as read". Функція `replaceCount()` для підстановки `{count}` у перекладах (t() не підтримує інтерполяцію). Переклад через `useTranslation`. |
 | `network-topology-map.tsx` | **Візуалізація мережевої топології** — використовує explicit connections для визначення зв'язків між обладнанням. Чотири сегментовані мережі: Core Backbone (Router → Switch), Enterprise (Core Switch → Servers/Endpoints), IoT (Guest WiFi → IoT devices), ICS (SCADA → PLC/Sensors). Каскадна ескалація offline-статусу: якщо батьківський пристрій offline, діти стають Unreachable. Стабільні позиції вузлів (ID-based). Горизонтальний спейс: 600px. Кольорове кодування: червоний (Critical), жовтий (Medium), сірий (Offline/Unreachable), зелений (Safe). |
 | `figma/ImageWithFallback.tsx` | Компонент зображення з fallback. |
 
@@ -90,6 +91,22 @@
 | `package.json` | Кореневий package.json з залежністю `reactflow`. |
 
 ## 🔧 Recent Changes
+### 2026-04-26: Cyber Analytics — графік атак у реальному часі + виправлення часового поясу
+- Створено `cyber-analytics.tsx` — сторінка з графіком атак (Recharts LineChart). Три лінії: Warning, Active, Critical.
+- Базові точки генеруються з `statistics.hourly` (00:00 до поточної години). Live-точки додаються кожні 60 сек.
+- X-вісь: 00:00, погодинні мітки, остання точка. Без точок (`dot={false}`).
+- Виправлено часовий пояс у `back/main_routes.py`: MongoDB зберігає UTC, тому фільтр `start_of_day`/`end_of_day` тепер конвертує локальний час в UTC перед порівнянням.
+- Виправлено hourly bucketing: naive timestamp з MongoDB тепер припускається як UTC (`ts.replace(tzinfo=timezone.utc)`) → `ts.astimezone(LOCAL_TZ)`.
+
+### 2026-04-25: Cyber Assets — NotificationsPopover, переклад, повноекранна мапа
+- Додано NotificationsPopover на cyber-assets.tsx (дзвіночок у правий верхній кут хедера).
+- Прибрано картки-лічильники (Total assets, Healthy, Critical threats, Systems offline) — мапа розтягнута на всю сторінку.
+- Додано переклад `notifications.*` у uk.ts та en.ts (system_alerts, actionable, no_active_alerts, critical_threats, high_risks, sensors_offline, mark_all_read).
+- Оновлено notifications-popover.tsx — замінив хардкод на t() з useTranslation, додав replaceCount() для `{count}`.
+- cyber-assets.tsx підтягує `/api/v1/risks/summary`, `/api/v1/logs`, `/api/v1/threats/archived`.
+- displayedLogsCount фільтрує: `!isResolvedLog && !archivedThreats && classifyThreat !== "warning"`.
+- Додано `classifyThreat()` в expert-utils.tsx для категоризації загроз (warning/active/critical).
+
 ### 2026-04-23: Зміна лічильників на сторінці Cybersecurity Dashboard
 - Замінено "active" на "unsafe" в підписі Escalation (cybersecurity.tsx, equipment-table.tsx) — відображає кількість обладнання, яке не має статусу "Безпечно" (не "Online").
 - Escalation перенесено з cybersecurity.tsx в equipment-table.tsx (відображається справа від заголовка "Моніторинг обладнання").
@@ -105,6 +122,14 @@
 При натисканні "Усунути загрозу" (експерт-панель) викликався `/api/v1/actions/block`, який встановлював статус обладнання в "Rebooting" і запускав background task `reboot_equipment`. Після 5 секунд статус змінювався на "Online", але `simulation_manager.active_attacks` все ще містив запис для цього пристрою. Це призводило до того, що `will_be_attacked = can_attack and not in_active_attacks` завжди повертало `false`, і пристрій більше не міг бути атакованим.
 
 **Виправлення:** Додано видалення з `active_attacks` в `reboot_equipment()` та `_apply_auto_fix()` у `back/simulation_endpoints.py`. Також виправлено виклик `_update_topology_dependencies(db)` (замість `self.`).
+
+### 2026-04-25: Equipment не відновлюється після паузи симуляції
+Після зупинки симуляції через відсутність доступного обладнання (`No available equipment`), при продовженні симуляції пристрої, атаковані DDoS/Minor атаками, не відновлювалися після ручного усунення загроз. Причиною був race condition: `_recovery_equipment()` перевіряв `equipment_id not in self.active_attacks`, але DDoS-атаки видалялися з `active_attacks` одразу після застосування ефекту. Також пристрої в "Rebooting" могли потрапити на нові атаки через `_get_available_equipment()`.
+
+**Виправлення:**
+1. `back/simulation.py`: Прибрана перевірка `equipment_id not in self.active_attacks` в `_recovery_equipment()` — тепер обладнання відновлюється незалежно від наявності в `active_attacks`.
+2. `back/simulation_topology.py`: Додано "Rebooting" у список статусів, які виключаються з доступних для атаки в `_get_available_equipment()`.
+3. `back/simulation_topology.py`: Повернуто стандартну поведінку `propagate_offline` (без "Rebooting") — пристрої в "Rebooting" більше не блокують каскадне відновлення дітей.
 
 ## ⚙️ Tech Stack & Dependencies
 
