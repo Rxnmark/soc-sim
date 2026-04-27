@@ -1,5 +1,5 @@
 import React from "react";
-import { LayoutDashboard, AlertTriangle, Server, Network, BarChart3, Briefcase, FileText, Users } from "lucide-react";
+import { LayoutDashboard, AlertTriangle, Server, BarChart3, Briefcase, FileText, Users } from "lucide-react";
 
 export type Role = "CEO" | "CISO" | "PM";
 
@@ -39,10 +39,9 @@ export interface NavItem {
 // Navigation item definitions with translation keys (not translated values)
 export const CYBER_NAV_ITEMS: Array<{ translationKey: string; href: string; icon: React.ComponentType<{ className?: string }> }> = [
   { translationKey: "sidebar.dashboard", href: "/cybersecurity", icon: LayoutDashboard },
-  { translationKey: "sidebar.threats", href: "/cybersecurity/threats", icon: AlertTriangle },
   { translationKey: "sidebar.assets", href: "/cybersecurity/assets", icon: Server },
-  { translationKey: "sidebar.access_control", href: "/cybersecurity/access", icon: Network },
   { translationKey: "sidebar.security_analytics", href: "/cybersecurity/analytics", icon: BarChart3 },
+  { translationKey: "sidebar.threats", href: "/cybersecurity/threats", icon: AlertTriangle },
 ];
 
 export const RISK_NAV_ITEMS: Array<{ translationKey: string; href: string; icon: React.ComponentType<{ className?: string }> }> = [

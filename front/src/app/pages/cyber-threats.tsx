@@ -1,17 +1,17 @@
 import { useEffect, useState, useMemo } from "react";
 import { Sidebar } from "../components/sidebar-nav";
-import { Card } from "../components/ui/card";
 import { Badge } from "../components/ui/badge";
-import { Button } from "../components/ui/button";
+import { NotificationsPopover } from "../components/notifications-popover";
 import { useTranslation } from "../../context/LanguageContext";
-import { getLogStyle, translateLogEventType, getEventDescription } from "../components/expert-utils";
+import { classifyThreat } from "../components/expert-utils";
 import { AlertTriangle, Activity, ShieldAlert } from "lucide-react";
-import { CounterCard, LogCard, ArchivedLog, ColumnLogs } from "./cyber-threats-components";
+import { ColumnLogs } from "./cyber-threats-components";
 
 // Types
 interface SecurityLog {
   _id: string;
   event_type: string;
+  title: string;
   description: string;
   source_ip: string;
   target_ip?: string;
@@ -30,23 +30,6 @@ interface ThreatStatistics {
   recent_logs: SecurityLog[];
 }
 
-// Category classification for logs (matches expert-panel.tsx)
-function getLogCategory(eventType: string): "warning" | "active" | "critical" {
-  const type = eventType.toLowerCase();
-  if ("auto-fix applied success neutralized".includes(type)) return "warning";
-  // Critical (red) - DDoS attacks causing system disruptions, equipment going offline
-  // Check DDoS subtypes first (slowloris, udp flood, dns amplification, ntp amplification)
-  if ("slowloris udp flood dns amplification ntp amplification ddos".split(" ").some(k => type.includes(k))) return "critical";
-  // Critical (red) - any attack that causes equipment to go offline/encrypted
-  if ("offline encrypted".split(" ").some(k => type.includes(k))) return "critical";
-  // Significant (orange) - ransomware, data leaks, spyware, encryption attacks (ENCRYPTED status without equipment disruption)
-  if ("ransomware exfiltration spyware data leak covert channel cryptolocker encryption".split(" ").some(k => type.includes(k))) return "active";
-  // Minor (yellow) - scanning, injection attempts, brute-force, warnings, unauthorized access, blocked
-  // Note: "attack" is excluded to avoid matching DDoS-related events
-  if ("scan injection unauthorized access security warning drift antivirus port bruteforce blocked".split(" ").some(k => type.includes(k))) return "warning";
-  return "warning";
-}
-
 // Check if log is resolved
 function isResolvedLog(eventType: string): boolean {
   return "auto-fix applied success neutralized".split(" ").some(k => eventType.toLowerCase().includes(k));
@@ -55,8 +38,9 @@ function isResolvedLog(eventType: string): boolean {
 export default function CyberThreatsPage() {
   const { t } = useTranslation();
   const [statistics, setStatistics] = useState<ThreatStatistics | null>(null);
+  const [riskSummary, setRiskSummary] = useState<any>(null);
   const [allLogs, setAllLogs] = useState<SecurityLog[]>([]);
-  const [selectedLog, setSelectedLog] = useState<SecurityLog | null>(null);
+  const [archivedThreats, setArchivedThreats] = useState<Set<string>>(new Set());
   const [loading, setLoading] = useState(true);
 
   const fetchStatistics = () => {
@@ -64,107 +48,77 @@ export default function CyberThreatsPage() {
       .then((res) => res.json())
       .then((data) => {
         setStatistics(data);
-        setAllLogs(data.recent_logs || []);
         setLoading(false);
       })
       .catch((err) => console.error("Error fetching statistics:", err));
   };
 
+  const fetchLogs = () => {
+    fetch("http://127.0.0.1:8000/api/v1/logs")
+      .then((res) => res.json())
+      .then((data) => setAllLogs(data))
+      .catch((err) => console.error("Error loading logs:", err));
+  };
+
+  const fetchRiskSummary = () => {
+    fetch("http://127.0.0.1:8000/api/v1/risks/summary")
+      .then((res) => res.json())
+      .then((data) => setRiskSummary(data))
+      .catch((err) => console.error("Error fetching risk summary:", err));
+  };
+
+  const fetchArchived = async () => {
+    try {
+      const res = await fetch("http://127.0.0.1:8000/api/v1/threats/archived");
+      const data = await res.json();
+      setArchivedThreats(new Set<string>(data.map((a: any) => String(a.source_ip))));
+    } catch (err) {
+      console.error("Error loading archived:", err);
+    }
+  };
+
   useEffect(() => {
     fetchStatistics();
-    const interval = setInterval(fetchStatistics, 10000);
-    return () => clearInterval(interval);
+    fetchLogs();
+    fetchRiskSummary();
+    fetchArchived();
+    const statsInterval = setInterval(fetchStatistics, 10000);
+    const logInterval = setInterval(fetchLogs, 5000);
+    const riskInterval = setInterval(fetchRiskSummary, 5000);
+    const archivedInterval = setInterval(fetchArchived, 5000);
+    return () => {
+      clearInterval(statsInterval);
+      clearInterval(logInterval);
+      clearInterval(riskInterval);
+      clearInterval(archivedInterval);
+    };
   }, []);
 
-
-  // Separate logs by category (filter out resolved logs)
-  const warningLogs = useMemo(() => 
-    allLogs.filter(log => getLogCategory(log.event_type) === "warning" && !isResolvedLog(log.event_type)), [allLogs]
+  // Separate logs by category using unified classifyThreat function
+  const warningLogs = useMemo(() =>
+    allLogs.filter(log => classifyThreat(log.event_type) === "warning" && !isResolvedLog(log.event_type)), [allLogs]
   );
-  const activeLogs = useMemo(() => 
-    allLogs.filter(log => getLogCategory(log.event_type) === "active" && !isResolvedLog(log.event_type)), [allLogs]
+  const activeLogs = useMemo(() =>
+    allLogs.filter(log => classifyThreat(log.event_type) === "active" && !isResolvedLog(log.event_type)), [allLogs]
   );
-  const criticalLogs = useMemo(() => 
-    allLogs.filter(log => getLogCategory(log.event_type) === "critical" && !isResolvedLog(log.event_type)), [allLogs]
+  const criticalLogs = useMemo(() =>
+    allLogs.filter(log => classifyThreat(log.event_type) === "critical" && !isResolvedLog(log.event_type)), [allLogs]
   );
 
-  // DETAIL VIEW
-  if (selectedLog) {
-    const style = getLogStyle(selectedLog.event_type);
-    const isResolved = selectedLog.event_type.includes("Auto-Fix") || selectedLog.event_type.includes("applied") || selectedLog.event_type.includes("neutralized");
-    
-    return (
-      <div className="h-screen w-full flex bg-background overflow-hidden">
-        <Sidebar />
-        <div className="flex-1 flex flex-col overflow-hidden">
-          <header className="h-16 border-b border-border bg-card flex items-center justify-between px-6 shrink-0">
-            <div>
-              <h1 className="text-card-foreground font-semibold">{t('threats.title', 'Threat Statistics')}</h1>
-              <p className="text-xs text-muted-foreground">{t('threats.details', 'Attack Log Details')}</p>
-            </div>
-          </header>
-          <main className="flex-1 p-6 flex items-center justify-center overflow-auto">
-            <Card className="max-w-lg w-full p-6 bg-card border-border">
-              <Button
-                variant="ghost"
-                size="sm"
-                className="mb-4 -ml-2 text-muted-foreground hover:text-foreground"
-                onClick={() => setSelectedLog(null)}
-              >
-                ← {t('logs.back_to_logs', 'Back to Logs')}
-              </Button>
+  const displayedLogsCount = useMemo(() => {
+    return allLogs.filter(log => !isResolvedLog(log.event_type) && !archivedThreats.has(log.source_ip) && classifyThreat(log.event_type) !== "warning").length;
+  }, [allLogs, archivedThreats]);
 
-              <div className="flex items-center gap-3 mb-4">
-                {style.icon}
-                <h2 className="text-lg font-bold text-card-foreground">
-                  {translateLogEventType(t, selectedLog.event_type)}
-                </h2>
-              </div>
-
-              <Badge variant="outline" className={`${style.badge} mb-4`}>
-                {style.icon}
-                <span className="ml-1.5">{isResolved ? t('logs.resolved', 'Resolved') : t('logs.critical', 'Critical')}</span>
-              </Badge>
-
-              <div className="space-y-3 mb-6">
-                <div>
-                  <p className="text-xs font-medium text-muted-foreground uppercase mb-1">{t('logs.event_details', 'Event Details')}</p>
-                  <p className="text-sm text-card-foreground">
-                    {getEventDescription(t, selectedLog.event_type)}
-                  </p>
-                </div>
-              <div className="grid grid-cols-2 gap-3 rounded-lg border border-border p-3 bg-muted/20">
-                <div>
-                  <p className="text-[10px] font-medium text-muted-foreground uppercase">{t('logs.source_ip', 'Source IP')}</p>
-                  <p className="text-sm font-mono">{selectedLog.source_ip}</p>
-                </div>
-                <div><p className="text-[10px] font-medium text-muted-foreground uppercase">{t('logs.timestamp', 'Timestamp')}</p>
-                  <p className="text-sm">{new Date(selectedLog.timestamp).toLocaleString()}</p>
-                </div>
-              </div>
-              </div>
-
-              <Button className="w-full" onClick={() => setSelectedLog(null)}>
-                {t('logs.close_details', 'Close Details')}
-              </Button>
-            </Card>
-          </main>
-        </div>
-      </div>
-    );
-  }
-
-  // MAIN VIEW
   return (
     <div className="h-screen w-full flex bg-background overflow-hidden">
       <Sidebar />
       <div className="flex-1 flex flex-col overflow-hidden">
         <header className="h-16 border-b border-border bg-card flex items-center justify-between px-6 shrink-0">
-          <div>
-            <h1 className="text-card-foreground font-semibold">{t('threatStats.title', 'Threat Statistics')}</h1>
-            <p className="text-xs text-muted-foreground">{t('threatStats.subtitle', 'Daily attack history & analysis')}</p>
-          </div>
-          <div className="flex items-center gap-2">
+          <div className="flex items-center gap-4">
+            <div>
+              <h1 className="text-card-foreground font-semibold">{t('threatStats.title', 'Threat Statistics')}</h1>
+              <p className="text-xs text-muted-foreground">{t('threatStats.subtitle', 'Daily attack history & analysis')}</p>
+            </div>
             {statistics && (
               <div className="flex items-center gap-2 px-3 py-1.5 rounded-md bg-emerald-500/10 border border-emerald-500/20">
                 <span className="relative flex h-2 w-2">
@@ -175,61 +129,61 @@ export default function CyberThreatsPage() {
               </div>
             )}
           </div>
+          <div className="flex items-center">
+            <NotificationsPopover apiData={riskSummary} displayedLogsCount={displayedLogsCount} />
+          </div>
         </header>
 
-        <main className="flex-1 overflow-auto p-6">
-          <div className="max-w-[1800px] mx-auto space-y-6">
+        <main className="flex-1 p-6 overflow-hidden">
+          <div className="max-w-[1800px] mx-auto h-full">
             {loading ? (
               <div className="text-center text-muted-foreground py-20">
                 {t('threatStats.loading', 'Loading statistics...')}
               </div>
             ) : (
-              <>
-                {/* THREE COLUMN LAYOUT - constrained to viewport height */}
-                <div className="grid grid-cols-3 gap-4 flex-1" style={{ height: 'calc(100vh - 260px)' }}>
-                  {/* Warning Column */}
-                  <ColumnLogs
-                    title={t('threatCategories.warning', 'Warning')}
-                    logs={warningLogs}
-                    archived={[]}
-                    color="text-yellow-500"
-                    icon={<AlertTriangle className="w-4 h-4 text-yellow-500" />}
-                    borderColor="border-yellow-500/20"
-                    bgColor="bg-yellow-500/5"
-                    onClick={setSelectedLog}
-                    countLabel={t('threatStats.warning_count', 'Warning')}
-                    t={t}
-                  />
+              <div className="grid grid-cols-3 gap-4 h-full">
+                {/* Warning Column */}
+                <ColumnLogs
+                  title={t('threatCategories.warning', 'Warning')}
+                  logs={warningLogs}
+                  archived={[]}
+                  color="text-yellow-500"
+                  icon={<AlertTriangle className="w-4 h-4 text-yellow-500" />}
+                  borderColor="border-yellow-500/20"
+                  bgColor="bg-yellow-500/5"
+                  countLabel={t('threatStats.warning_count', 'Warning')}
+                  riskLabel={t('threatCategories.warning_tag', 'Minor')}
+                  t={t}
+                />
 
-                  {/* Active Column */}
-                  <ColumnLogs
-                    title={t('threatCategories.active', 'Active')}
-                    logs={activeLogs}
-                    archived={[]}
-                    color="text-orange-500"
-                    icon={<Activity className="w-4 h-4 text-orange-500" />}
-                    borderColor="border-orange-500/20"
-                    bgColor="bg-orange-500/5"
-                    onClick={setSelectedLog}
-                    countLabel={t('threatStats.active_count', 'Active')}
-                    t={t}
-                  />
+                {/* Active Column */}
+                <ColumnLogs
+                  title={t('threatCategories.active', 'Active')}
+                  logs={activeLogs}
+                  archived={[]}
+                  color="text-orange-500"
+                  icon={<Activity className="w-4 h-4 text-orange-500" />}
+                  borderColor="border-orange-500/20"
+                  bgColor="bg-orange-500/5"
+                  countLabel={t('threatStats.active_count', 'Active')}
+                  riskLabel={t('threatCategories.active_tag', 'Requires Attention')}
+                  t={t}
+                />
 
-                  {/* Critical Column */}
-                  <ColumnLogs
-                    title={t('threatCategories.critical', 'Critical')}
-                    logs={criticalLogs}
-                    archived={[]}
-                    color="text-red-500"
-                    icon={<ShieldAlert className="w-4 h-4 text-red-500" />}
-                    borderColor="border-red-500/20"
-                    bgColor="bg-red-500/5"
-                    onClick={setSelectedLog}
-                    countLabel={t('threatStats.critical_count', 'Critical')}
-                    t={t}
-                  />
-                </div>
-              </>
+                {/* Critical Column */}
+                <ColumnLogs
+                  title={t('threatCategories.critical', 'Critical')}
+                  logs={criticalLogs}
+                  archived={[]}
+                  color="text-red-500"
+                  icon={<ShieldAlert className="w-4 h-4 text-red-500" />}
+                  borderColor="border-red-500/20"
+                  bgColor="bg-red-500/5"
+                  countLabel={t('threatStats.critical_count', 'Critical')}
+                  riskLabel={t('threatCategories.critical_risk', 'Critical')}
+                  t={t}
+                />
+              </div>
             )}
           </div>
         </main>

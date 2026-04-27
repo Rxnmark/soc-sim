@@ -1,39 +1,49 @@
 import { useState, useEffect } from "react";
 import { Popover, PopoverContent, PopoverTrigger } from "./ui/popover";
 import { Button } from "./ui/button";
-import { Bell, CheckCheck, AlertTriangle, Shield, ServerOff } from "lucide-react";
+import { Bell, CheckCheck, AlertTriangle, Shield, ServerOff, Flame } from "lucide-react";
+import { useTranslation } from "../../context/LanguageContext";
+
+function replaceCount(str: string, count: number): string {
+  return str.replace("{count}", String(count));
+}
 
 export function NotificationsPopover({ apiData, displayedLogsCount }: { apiData: any; displayedLogsCount?: number }) {
-  // Зберігаємо типи загроз, які користувач "прочитав" (приховав)
+  const { t } = useTranslation();
   const [dismissed, setDismissed] = useState<string[]>([]);
 
-  // Якщо apiData оновлюється і з'являються НОВІ загрози, ми можемо скидати dismissed,
-  // але для демо-режиму просто дозволяємо їх приховати.
-  
-  // Формуємо масив активних сповіщень на основі реальних даних
-  const activeAlerts = [];
+  // Form the list of active notifications based on real data
+  const activeAlerts: Array<{
+    id: string;
+    count: number;
+    title: string;
+    desc: string;
+    icon: React.ReactNode;
+    bg: string;
+    textTitle: string;
+  }> = [];
 
   if (apiData?.critical_threats > 0 && !dismissed.includes("critical")) {
     activeAlerts.push({
       id: "critical",
       count: apiData.critical_threats,
-      title: "Critical Threats",
-      desc: `${apiData.critical_threats} device(s) require immediate AI analysis.`,
+      title: t('notifications.critical_threats'),
+      desc: replaceCount(t('notifications.critical_threats_desc'), apiData.critical_threats),
       icon: <AlertTriangle className="w-4 h-4 text-red-500 mt-0.5 shrink-0" />,
       bg: "bg-red-500/10 border-red-500/20",
       textTitle: "text-red-500",
     });
   }
 
-  if (apiData?.medium_risks > 0 && !dismissed.includes("medium")) {
+  if (apiData?.high_risks > 0 && !dismissed.includes("high")) {
     activeAlerts.push({
-      id: "medium",
-      count: apiData.medium_risks,
-      title: "Medium Risks",
-      desc: `${apiData.medium_risks} vulnerability(ies) scheduled for patching.`,
-      icon: <Shield className="w-4 h-4 text-yellow-500 mt-0.5 shrink-0" />,
-      bg: "bg-yellow-500/10 border-yellow-500/20",
-      textTitle: "text-yellow-500",
+      id: "high",
+      count: apiData.high_risks,
+      title: t('notifications.high_risks'),
+      desc: replaceCount(t('notifications.high_risks_desc'), apiData.high_risks),
+      icon: <Flame className="w-4 h-4 text-orange-500 mt-0.5 shrink-0" />,
+      bg: "bg-orange-500/10 border-orange-500/20",
+      textTitle: "text-orange-500",
     });
   }
 
@@ -41,19 +51,19 @@ export function NotificationsPopover({ apiData, displayedLogsCount }: { apiData:
     activeAlerts.push({
       id: "offline",
       count: apiData.sensors_offline,
-      title: "Sensors Offline",
-      desc: `${apiData.sensors_offline} system(s) currently unreachable or rebooting.`,
+      title: t('notifications.sensors_offline'),
+      desc: replaceCount(t('notifications.sensors_offline_desc'), apiData.sensors_offline),
       icon: <ServerOff className="w-4 h-4 text-gray-500 mt-0.5 shrink-0" />,
       bg: "bg-gray-500/10 border-gray-500/20",
       textTitle: "text-gray-400",
     });
   }
 
-  // Загальна кількість подій для бейджика
+  // Total count for badge
   const totalAlerts = displayedLogsCount !== undefined ? displayedLogsCount : activeAlerts.reduce((sum, alert) => sum + alert.count, 0);
 
   const markAllAsRead = () => {
-    setDismissed(["critical", "medium", "offline"]);
+    setDismissed(["critical", "high", "offline"]);
   };
 
   return (
@@ -71,16 +81,16 @@ export function NotificationsPopover({ apiData, displayedLogsCount }: { apiData:
       
       <PopoverContent align="end" className="w-80 p-0 border-border bg-card shadow-xl rounded-lg overflow-hidden">
         <div className="p-3 border-b border-border bg-muted/30 flex justify-between items-center">
-          <h3 className="text-sm font-semibold text-card-foreground">System Alerts</h3>
+          <h3 className="text-sm font-semibold text-card-foreground">{t('notifications.system_alerts', 'System Alerts')}</h3>
           <div className="flex items-center gap-2">
             <span className="text-xs font-medium text-muted-foreground bg-muted px-2 py-0.5 rounded-full">
-              {totalAlerts} Actionable
+              {totalAlerts} {t('notifications.actionable', 'Actionable')}
             </span>
             {totalAlerts > 0 && (
               <button 
                 onClick={markAllAsRead}
                 className="text-xs flex items-center gap-1 text-primary hover:text-primary/80 transition-colors ml-1"
-                title="Mark all as read"
+                title={t('notifications.mark_all_read', 'Mark all as read')}
               >
                 <CheckCheck className="w-4 h-4" />
               </button>
@@ -92,7 +102,7 @@ export function NotificationsPopover({ apiData, displayedLogsCount }: { apiData:
           {activeAlerts.length === 0 ? (
             <div className="p-6 text-center text-sm text-muted-foreground flex flex-col items-center gap-2">
               <Shield className="w-8 h-8 text-emerald-500/50" />
-              <p>No active alerts right now.</p>
+              <p>{t('notifications.no_active_alerts', 'No active alerts right now.')}</p>
             </div>
           ) : (
             <div className="space-y-1.5">

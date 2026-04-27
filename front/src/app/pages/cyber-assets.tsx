@@ -1,12 +1,13 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useMemo } from "react";
 import { Sidebar } from "../components/sidebar-nav";
 import { 
-  Server, Shield, Search, RefreshCw, AlertTriangle, 
-  Activity, Database, Network, Laptop, Video, Power, ShieldAlert
+  Server, Search, RefreshCw, Network, LayoutGrid 
 } from "lucide-react";
 import { Button } from "../components/ui/button";
 import { NetworkTopologyMap } from "../components/network-topology-map";
+import { NotificationsPopover } from "../components/notifications-popover";
 import { useTranslation } from "../../context/LanguageContext";
+import { classifyThreat } from "../components/expert-utils";
 
 interface Asset {
   id: number;
@@ -17,12 +18,30 @@ interface Asset {
   risk_level: string;
 }
 
+interface SecurityLog {
+  _id: string;
+  event_type: string;
+  title: string;
+  description: string;
+  source_ip: string;
+  target_ip?: string;
+  timestamp: string;
+}
+
+function isResolvedLog(eventType: string): boolean {
+  return "auto-fix applied success neutralized".split(" ").some(k => eventType.toLowerCase().includes(k));
+}
+
 export default function CyberAssetsPage() {
   const { t } = useTranslation();
   const [assets, setAssets] = useState<Asset[]>([]);
   const [loading, setLoading] = useState(true);
   const [searchQuery, setSearchQuery] = useState("");
   const [isRefreshing, setIsRefreshing] = useState(false);
+  const [riskSummary, setRiskSummary] = useState<any>(null);
+  const [allLogs, setAllLogs] = useState<SecurityLog[]>([]);
+  const [archivedThreats, setArchivedThreats] = useState<Set<string>>(new Set());
+  const [layoutMode, setLayoutMode] = useState<'grid' | 'hierarchical'>('hierarchical');
 
   const fetchAssets = async (isManual = false) => {
     if (isManual) setIsRefreshing(true);
@@ -38,10 +57,45 @@ export default function CyberAssetsPage() {
     }
   };
 
+  const fetchLogs = () => {
+    fetch("http://127.0.0.1:8000/api/v1/logs")
+      .then((res) => res.json())
+      .then((data) => setAllLogs(data))
+      .catch((err) => console.error("Error loading logs:", err));
+  };
+
+  const fetchRiskSummary = () => {
+    fetch("http://127.0.0.1:8000/api/v1/risks/summary")
+      .then((res) => res.json())
+      .then((data) => setRiskSummary(data))
+      .catch((err) => console.error("Error fetching risk summary:", err));
+  };
+
+  const fetchArchived = async () => {
+    try {
+      const res = await fetch("http://127.0.0.1:8000/api/v1/threats/archived");
+      const data = await res.json();
+      setArchivedThreats(new Set<string>(data.map((a: any) => String(a.source_ip))));
+    } catch (err) {
+      console.error("Error loading archived:", err);
+    }
+  };
+
   useEffect(() => {
     fetchAssets();
+    fetchLogs();
+    fetchRiskSummary();
+    fetchArchived();
     const interval = setInterval(() => fetchAssets(false), 5000);
-    return () => clearInterval(interval);
+    const logInterval = setInterval(fetchLogs, 5000);
+    const riskInterval = setInterval(fetchRiskSummary, 5000);
+    const archivedInterval = setInterval(fetchArchived, 5000);
+    return () => {
+      clearInterval(interval);
+      clearInterval(logInterval);
+      clearInterval(riskInterval);
+      clearInterval(archivedInterval);
+    };
   }, []);
 
   const filteredAssets = assets.filter(a => 
@@ -50,10 +104,9 @@ export default function CyberAssetsPage() {
     a.type.toLowerCase().includes(searchQuery.toLowerCase())
   );
 
-  const criticalAssets = assets.filter(a => a.risk_level === "Critical").length;
-  const offlineAssets = assets.filter(a => a.status === "Offline" || a.status === "Encrypted" || a.status === "Unreachable").length;
-  const safeAssets = assets.filter(a => a.risk_level === "Safe" && a.status === "Online").length;
-  const requiresAttentionAssets = assets.filter(a => a.risk_level === "Medium").length;
+  const displayedLogsCount = useMemo(() => {
+    return allLogs.filter(log => !isResolvedLog(log.event_type) && !archivedThreats.has(log.source_ip) && classifyThreat(log.event_type) !== "warning").length;
+  }, [allLogs, archivedThreats]);
 
   return (
     <div className="h-screen w-full flex bg-background overflow-hidden">
@@ -69,6 +122,25 @@ export default function CyberAssetsPage() {
             </h1>
           </div>
           <div className="flex items-center gap-4">
+            
+            {/* ТУМБЛЕР РЕЖИМУ КАРТИ */}
+            <div className="flex items-center bg-muted/50 rounded-lg p-1 border border-border">
+              <button
+                onClick={() => setLayoutMode('grid')}
+                className={`p-1.5 rounded-md transition-all ${layoutMode === 'grid' ? 'bg-background shadow text-foreground' : 'text-muted-foreground hover:text-foreground'}`}
+                title="Grid View"
+              >
+                <LayoutGrid className="w-4 h-4" />
+              </button>
+              <button
+                onClick={() => setLayoutMode('hierarchical')}
+                className={`p-1.5 rounded-md transition-all ${layoutMode === 'hierarchical' ? 'bg-background shadow text-foreground' : 'text-muted-foreground hover:text-foreground'}`}
+                title="Topology View"
+              >
+                <Network className="w-4 h-4" />
+              </button>
+            </div>
+
             <div className="relative flex items-center">
               <Search className="absolute left-3 w-4 h-4 text-muted-foreground" />
               <input
@@ -82,35 +154,15 @@ export default function CyberAssetsPage() {
             <Button variant="outline" size="icon" onClick={() => fetchAssets(true)} disabled={isRefreshing}>
               <RefreshCw className={`w-4 h-4 text-muted-foreground ${isRefreshing ? 'animate-spin text-primary' : ''}`} />
             </Button>
+            <NotificationsPopover apiData={riskSummary} displayedLogsCount={displayedLogsCount} />
           </div>
         </header>
 
         <main className="flex-1 overflow-hidden p-6">
           <div className="max-w-[1600px] mx-auto h-full flex flex-col">
-            
-            {/* STATS CARDS */}
-            <div className="grid grid-cols-4 gap-4 mb-6 shrink-0">
-              <div className="p-4 rounded-xl bg-card border border-border shadow-sm flex items-center gap-4">
-                <div className="w-12 h-12 rounded-full bg-emerald-500/10 flex items-center justify-center"><Shield className="w-6 h-6 text-emerald-500" /></div>
-                <div><p className="text-xs text-muted-foreground">{t('assets.healthy')}</p><p className="text-2xl font-bold text-emerald-500">{safeAssets}</p></div>
-              </div>
-              <div className="p-4 rounded-xl bg-card border border-border shadow-sm flex items-center gap-4">
-                <div className="w-12 h-12 rounded-full bg-gray-500/10 flex items-center justify-center"><Power className="w-6 h-6 text-gray-400" /></div>
-                <div><p className="text-xs text-muted-foreground">{t('assets.systems_offline')}</p><p className="text-2xl font-bold text-gray-400">{offlineAssets}</p></div>
-              </div>
-              <div className="p-4 rounded-xl bg-card border border-border shadow-sm flex items-center gap-4">
-                <div className="w-12 h-12 rounded-full bg-red-500/10 flex items-center justify-center"><ShieldAlert className="w-6 h-6 text-red-500" /></div>
-                <div><p className="text-xs text-muted-foreground">{t('assets.critical_threats')}</p><p className="text-2xl font-bold text-red-500">{criticalAssets}</p></div>
-              </div>
-              <div className="p-4 rounded-xl bg-card border border-border shadow-sm flex items-center gap-4">
-                <div className="w-12 h-12 rounded-full bg-yellow-500/10 flex items-center justify-center"><AlertTriangle className="w-6 h-6 text-yellow-500" /></div>
-                <div><p className="text-xs text-muted-foreground">{t('assets.requires_attention')}</p><p className="text-2xl font-bold text-yellow-500">{requiresAttentionAssets}</p></div>
-              </div>
-            </div>
-
-            {/* NETWORK TOPOLOGY MAP */}
             <div className="flex-1 min-h-0">
-              <NetworkTopologyMap assets={filteredAssets} />
+              {/* ПЕРЕДАЄМО РЕЖИМ */}
+              <NetworkTopologyMap assets={filteredAssets} layoutMode={layoutMode} />
             </div>
           </div>
         </main>

@@ -4,7 +4,10 @@ Orchestrates the simulation lifecycle and user fix actions.
 Imports core logic from simulation_core.py.
 """
 import asyncio
-from datetime import datetime, timezone
+from datetime import datetime, timezone, timedelta
+
+# Use Europe/Kiev timezone (UTC+3)
+LOCAL_TZ = timezone(timedelta(hours=3))
 from database import SessionLocal, security_logs_collection
 import models
 from attack_definitions import STANDARD_REBOOT_SECONDS
@@ -103,6 +106,10 @@ class SimulationManager(SimulationCore):
                 ).update({"is_resolved": True})
                 db.commit()
 
+            # ALWAYS remove from active_attacks if present (legacy fix case)
+            if equipment_id in self.active_attacks:
+                del self.active_attacks[equipment_id]
+
             # Start background recovery task (non-blocking)
             asyncio.create_task(self._recovery_equipment(equipment_id, eq.name, attack_type, recovery_time))
 
@@ -117,7 +124,7 @@ class SimulationManager(SimulationCore):
         db = SessionLocal()
         try:
             eq = db.query(models.Equipment).filter(models.Equipment.id == equipment_id).first()
-            if eq and eq.status == "Rebooting":
+            if eq and eq.status in ("Rebooting", "Encrypted", "Offline", "Unreachable"):
                 eq.status = "Online"
                 db.commit()
 
@@ -125,7 +132,7 @@ class SimulationManager(SimulationCore):
                     "event_type": "Auto-Fix Applied",
                     "description": f"Equipment {eq_name} recovered after {attack_type} fix ({recovery_seconds}s).",
                     "source_ip": eq.ip_address if eq else "unknown",
-                    "timestamp": datetime.now(timezone.utc),
+                    "timestamp": datetime.now(LOCAL_TZ),
                 })
 
                 # Recalculate topology dependencies to restore children

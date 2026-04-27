@@ -36,10 +36,10 @@ export function EquipmentTable({ filterIp, setFilterIp }: Props) {
       eq.ip_address.includes(searchQuery)
     )
     .sort((a, b) => {
-      if (a.risk_level === "Critical" && b.risk_level !== "Critical") return -1;
-      if (b.risk_level === "Critical" && a.risk_level !== "Critical") return 1;
-      if (a.risk_level === "Medium" && b.risk_level !== "Medium") return -1;
-      if (b.risk_level === "Medium" && a.risk_level !== "Medium") return 1;
+      const riskOrder = { Critical: 4, High: 3, Medium: 2, Warning: 1, Safe: 0 };
+      const aRisk = riskOrder[a.risk_level] || 0;
+      const bRisk = riskOrder[b.risk_level] || 0;
+      if (bRisk !== aRisk) return bRisk - aRisk;
       if (a.status !== "Online" && b.status === "Online") return -1;
       if (b.status !== "Online" && a.status === "Online") return 1;
       return 0;
@@ -106,8 +106,12 @@ export function EquipmentTable({ filterIp, setFilterIp }: Props) {
                   <td className="px-6 py-4">
                     {eq.risk_level === "Critical" ? (
                       <span className="flex items-center gap-1.5 text-red-500 font-medium"><ShieldAlert className="w-4 h-4" /> {t('equipment.risk_critical', 'Critical')}</span>
+                    ) : eq.risk_level === "High" ? (
+                      <span className="text-orange-500 font-medium">{t('equipment.risk_high', 'High')}</span>
                     ) : eq.risk_level === "Medium" ? (
                       <span className="text-yellow-500 font-medium">{t('equipment.risk_medium', 'Medium')}</span>
+                    ) : eq.risk_level === "Warning" ? (
+                      <span className="text-amber-400 font-medium">{t('equipment.risk_warning', 'Warning')}</span>
                     ) : (
                       <span className="text-emerald-500 font-medium">{t('equipment.risk_safe', 'Safe')}</span>
                     )}

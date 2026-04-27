@@ -6,7 +6,7 @@ import { Card } from "../components/ui/card";
 import { AlertTriangle, Shield, ServerOff } from "lucide-react";
 import { NotificationsPopover } from "../components/notifications-popover";
 import { useTranslation } from "../../context/LanguageContext";
-import { isResolvedThreat } from "../components/expert-utils";
+import { isResolvedThreat, classifyThreat } from "../components/expert-utils";
 
 export default function CybersecurityDashboard() {
   const { t } = useTranslation();
@@ -65,7 +65,7 @@ export default function CybersecurityDashboard() {
   }, []);
 
   const displayedLogsCount = useMemo(() => {
-    return logs.filter(log => !isResolvedThreat(log.event_type) && !archivedThreats.has(log.source_ip)).length;
+    return logs.filter(log => !isResolvedThreat(log.event_type) && !archivedThreats.has(log.source_ip) && classifyThreat(log.event_type) !== "warning").length;
   }, [logs, archivedThreats]);
 
   return (
@@ -78,14 +78,12 @@ export default function CybersecurityDashboard() {
             <p className="text-xs text-muted-foreground">{t('dashboard.subtitle', 'Real-time threat monitoring')}</p>
           </div>
           <div className="flex items-center gap-4">
-            <NotificationsPopover apiData={apiData} displayedLogsCount={displayedLogsCount} />
-
             {apiData?.critical_threats > 0 ? (
               <div className="flex items-center gap-2 px-3 py-2 rounded-lg bg-red-500/10 border border-red-500/20 shadow-[0_0_10px_rgba(239,68,68,0.2)]">
                 <Shield className="w-4 h-4 text-red-500 animate-pulse" />
                 <span className="text-sm text-red-500 font-medium">{t('dashboard.active_threats', 'Active Threats')}</span>
               </div>
-            ) : apiData?.sensors_offline > 0 ? (
+            ) : apiData?.sensors_offline > 0 || apiData?.high_risks > 0 || apiData?.medium_risks > 0 ? (
               <div className="flex items-center gap-2 px-3 py-2 rounded-lg bg-yellow-500/10 border border-yellow-500/20">
                 <AlertTriangle className="w-4 h-4 text-yellow-500" />
                 <span className="text-sm text-yellow-500 font-medium">{t('dashboard.maintenance', 'Maintenance / Reboot')}</span>
@@ -96,6 +94,7 @@ export default function CybersecurityDashboard() {
                 <span className="text-sm text-emerald-500 font-medium">{t('dashboard.systems_secure', 'Systems Secure')}</span>
               </div>
             )}
+            <NotificationsPopover apiData={apiData} displayedLogsCount={displayedLogsCount} />
           </div>
         </header>
 
@@ -123,17 +122,17 @@ export default function CybersecurityDashboard() {
                 <Card className="p-6 bg-card border-border">
                   <div className="flex items-start justify-between mb-3">
                     <div>
-                      <p className="text-xs text-muted-foreground mb-1">{t('dashboard.medium_risks', 'Medium Risks')}</p>
-                      <p className="text-3xl text-yellow-500 font-semibold">
-                        {apiData ? apiData.medium_risks : "..."}
+                      <p className="text-xs text-muted-foreground mb-1">{t('dashboard.high_risks', 'High Risks')}</p>
+                      <p className="text-3xl text-orange-500 font-semibold">
+                        {apiData ? apiData.high_risks : "..."}
                       </p>
                     </div>
-                    <div className="w-10 h-10 rounded-lg bg-yellow-500/10 flex items-center justify-center">
-                      <Shield className="w-5 h-5 text-yellow-500" />
+                    <div className="w-10 h-10 rounded-lg bg-orange-500/10 flex items-center justify-center">
+                      <Shield className="w-5 h-5 text-orange-500" />
                     </div>
                   </div>
                   <div className="flex items-center gap-2">
-                    <span className="text-xs text-muted-foreground">{t('dashboard.scheduled_patching', 'Scheduled for patching')}</span>
+                    <span className="text-xs text-muted-foreground">{t('dashboard.ransomware_active', 'Ransomware / Encryption active')}</span>
                   </div>
                 </Card>
 

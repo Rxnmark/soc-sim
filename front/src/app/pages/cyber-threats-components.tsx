@@ -4,6 +4,7 @@ import { AlertTriangle, ShieldAlert, Activity, CheckCircle2, Clock, Database } f
 interface SecurityLog {
   _id: string;
   event_type: string;
+  title: string;
   description: string;
   source_ip: string;
   target_ip?: string;
@@ -46,13 +47,12 @@ export function CounterCard({
 }
 
 // Log Card Component for 3-column layout
-export function LogCard({ log, onClick }: { log: SecurityLog; onClick: () => void }) {
+export function LogCard({ log, riskLabel }: { log: SecurityLog; riskLabel?: string }) {
   const style = getLogStyle(log.event_type);
   const { t } = useTranslation();
   return (
     <div
-      className="p-3 rounded-lg border border-border bg-background hover:bg-muted/40 transition-all cursor-pointer hover:border-primary/50 group shadow-sm"
-      onClick={onClick}
+      className="p-3 rounded-lg border border-border bg-background hover:bg-muted/40 transition-all hover:border-primary/50 group shadow-sm"
     >
       <div className="flex items-start justify-between mb-2">
         <div className="flex items-center gap-2">
@@ -66,9 +66,19 @@ export function LogCard({ log, onClick }: { log: SecurityLog; onClick: () => voi
           {formatDate(log.timestamp)}
         </div>
       </div>
-      <p className="text-xs text-card-foreground mb-2 line-clamp-2">
+      <p className="text-xs text-card-foreground mb-2 line-clamp-2 font-medium">
+        {log.title}
+      </p>
+      <p className="text-xs text-muted-foreground mb-2 line-clamp-2">
         {getEventDescription(t, log.event_type)}
       </p>
+      {riskLabel && (
+        <div className="mb-2">
+          <Badge variant="outline" className={`${style.badge} text-[9px]`}>
+            {riskLabel}
+          </Badge>
+        </div>
+      )}
       <div className="flex items-center justify-between pt-2 border-t border-border/50">
         <span className="text-[10px] font-mono text-muted-foreground">
           SRC: <span className="text-foreground">{log.source_ip}</span>
@@ -103,8 +113,8 @@ export function ColumnLogs({
   icon,
   borderColor,
   bgColor,
-  onClick,
   countLabel,
+  riskLabel,
   t,
 }: {
   title: string;
@@ -114,8 +124,8 @@ export function ColumnLogs({
   icon: React.ReactNode;
   borderColor: string;
   bgColor: string;
-  onClick: (log: SecurityLog) => void;
   countLabel: string;
+  riskLabel?: string;
   t: (key: string, fallback?: string) => string | React.ReactNode;
 }) {
   return (
@@ -137,7 +147,7 @@ export function ColumnLogs({
           <p className="text-xs text-muted-foreground text-center py-10">No {title.toLowerCase()} logs</p>
         ) : (
           logs.map((log) => (
-            <LogCard key={log._id} log={log} onClick={() => onClick(log)} />
+            <LogCard key={log._id} log={log} riskLabel={riskLabel} />
           ))
         )}
       </div>

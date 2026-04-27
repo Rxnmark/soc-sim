@@ -6,6 +6,7 @@ import asyncio
 import random
 from database import SessionLocal, security_logs_collection
 import models
+from sqlalchemy.orm import Session
 from attack_definitions import SIMULATION_ATTACKS, STANDARD_REBOOT_SECONDS
 
 
@@ -94,7 +95,20 @@ class SimulationTopology:
 
         # Update Unreachable status for IoT/Endpoint devices
         for eq in db.query(models.Equipment).all():
-            if eq.type in ("IoT", "Endpoint") and eq.id not in self.active_attacks:
+            if eq.id in self.active_attacks:
+                continue
+            if eq.type in ("IoT", "Endpoint"):
+                is_parent_offline = affected_status.get(eq.id, False)
+                if is_parent_offline and eq.status in ("Online", "Unreachable"):
+                    eq.status = "Unreachable"
+                elif not is_parent_offline and eq.status in ("Unreachable", "Offline", "Rebooting"):
+                    eq.status = "Online"
+
+        # Also update non-IoT/Endpoint devices (servers, routers, etc.)
+        for eq in db.query(models.Equipment).all():
+            if eq.id in self.active_attacks:
+                continue
+            if eq.type not in ("IoT", "Endpoint"):
                 is_parent_offline = affected_status.get(eq.id, False)
                 if is_parent_offline and eq.status in ("Online", "Unreachable"):
                     eq.status = "Unreachable"
@@ -106,6 +120,17 @@ class SimulationTopology:
     # ------------------------------------------------------------------
     # Helpers
     # ------------------------------------------------------------------
+    def _get_available_equipment(self, db: Session) -> list:
+        """Return list of equipment that can be attacked (Online, Unreachable, Offline).
+
+        Excludes "Rebooting" equipment to prevent attacking devices that are
+        currently recovering from a fix (race condition fix).
+        """
+        return [
+            eq for eq in db.query(models.Equipment).all()
+            if eq.status in ("Online", "Unreachable", "Offline")
+        ]
+
     def _random_delay(self) -> float:
         if self.current_phase == "escalated":
             return random.uniform(
@@ -135,16 +160,3 @@ class SimulationTopology:
             if ip not in self.blocked_ips:
                 return ip
 
-    async def _all_equipment_down(self) -> bool:
-        """Check if all equipment is non-functional."""
-        db = SessionLocal()
-        try:
-            all_eq = db.query(models.Equipment).all()
-            if not all_eq:
-                return True
-            for eq in all_eq:
-                if eq.status in ("Online", "Rebooting"):
-                    return False
-            return True
-        finally:
-            db.close()

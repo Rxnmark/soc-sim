@@ -1,6 +1,30 @@
 import random
-from datetime import datetime, timezone
+from datetime import datetime, timezone, timedelta
+
+# Use Europe/Kiev timezone (UTC+3)
+LOCAL_TZ = timezone(timedelta(hours=3))
 import models
+
+minor_threats = [
+    {"type": "Port Scan", "severity": "Low", "category": "Minor",
+     "title": "Позадовільне сканування мережі",
+     "description": "Виявлено сканування портів зовнішнім джерелом, розвідка перед атакою"},
+    {"type": "Brute-force Attempt", "severity": "Low", "category": "Minor",
+     "title": "Невдала спроба brute-force атаки",
+     "description": "Невдала спроба підбору паролів виявлена та заблокована"},
+    {"type": "SQL Injection Attempt", "severity": "Low", "category": "Minor",
+     "title": "Спроба SQL-ін'єкції заблокована",
+     "description": "Невдала спроба SQL-ін'єкції, спрямована на бази даних через поля форм"},
+    {"type": "Policy Violation", "severity": "Low", "category": "Minor",
+     "title": "Порушення політики безпеки",
+     "description": "Виявлено відхилення від базової політики безпеки"},
+    {"type": "Reconnaissance", "severity": "Low", "category": "Minor",
+     "title": "Розвідувальна активність виявлена",
+     "description": "Підозріла активність збору інформації про інфраструктуру"},
+    {"type": "NTP Amplification", "severity": "High", "category": "Minor",
+     "title": "NTP Amplification атака виявлена",
+     "description": "Виявлено NTP Amplification атаку, спрямовану на внутрішні сегменти мережі"},
+]
 
 warning_threats = [
     {"type": "Port Scan", "severity": "Low", "category": "Warning",
@@ -18,6 +42,9 @@ warning_threats = [
     {"type": "Config Drift", "severity": "Low", "category": "Warning",
      "title": "Зміна конфігурації виявлена",
      "description": "Конфігурація безпеки відхилилася від базової політики"},
+    {"type": "NTP Amplification", "severity": "High", "category": "Warning",
+     "title": "NTP Amplification атака виявлена",
+     "description": "Виявлено NTP Amplification атаку, спрямовану на внутрішні сегменти мережі"},
 ]
 
 active_threats = [
@@ -57,9 +84,11 @@ critical_threats = [
 ]
 
 def generate_random_threat(db):
-    """Generates a random threat categorized as Warning, Active, or Critical."""
-    category_weights = random.choices(["Warning", "Active", "Critical"], weights=[40, 40, 20])[0]
-    if category_weights == "Warning":
+    """Generates a random threat categorized as Minor, Warning, Active, or Critical."""
+    category_weights = random.choices(["Minor", "Warning", "Active", "Critical"], weights=[30, 30, 30, 10])[0]
+    if category_weights == "Minor":
+        threat_pool = minor_threats
+    elif category_weights == "Warning":
         threat_pool = warning_threats
     elif category_weights == "Active":
         threat_pool = active_threats
@@ -74,7 +103,7 @@ def generate_random_threat(db):
         type=selected["type"],
         severity=selected["severity"],
         category=selected["category"],
-        timestamp=datetime.now(timezone.utc)
+        timestamp=datetime.now(LOCAL_TZ)
     )
     db.add(new_threat)
     db.commit()

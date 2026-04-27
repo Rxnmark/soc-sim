@@ -1,0 +1,840 @@
+Після того, як атаки зупинились, але я всі їх відбив:
+
+'http://127.0.0.1:8000/api/v1/debug/simulation/state' :
+{
+  "is_running": false,
+  "phase": "normal",
+  "financial_exposure": 0,
+  "active_attacks": {},
+  "attack_history": {},
+  "blocked_ips_count": 0,
+  "active_attacks_count": 0
+}
+
+'http://127.0.0.1:8000/api/v1/debug/simulation/available':
+{
+  "total_equipment": 20,
+  "available_for_attack": 20,
+  "equipment": [
+    {
+      "id": 14,
+      "name": "Perimeter Camera 02",
+      "type": "IoT",
+      "ip_address": "172.16.0.102",
+      "status": "Online",
+      "can_be_attacked": true,
+      "in_active_attacks": false,
+      "will_be_attacked": true
+    },
+    {
+      "id": 11,
+      "name": "Wind Turbine 2 Telemetry",
+      "type": "Sensor",
+      "ip_address": "10.0.1.51",
+      "status": "Online",
+      "can_be_attacked": true,
+      "in_active_attacks": false,
+      "will_be_attacked": true
+    },
+    {
+      "id": 18,
+      "name": "Backup NAS Server",
+      "type": "Server",
+      "ip_address": "192.168.2.100",
+      "status": "Online",
+      "can_be_attacked": true,
+      "in_active_attacks": false,
+      "will_be_attacked": true
+    },
+    {
+      "id": 16,
+      "name": "CEO Workstation",
+      "type": "Endpoint",
+      "ip_address": "192.168.5.10",
+      "status": "Online",
+      "can_be_attacked": true,
+      "in_active_attacks": false,
+      "will_be_attacked": true
+    },
+    {
+      "id": 13,
+      "name": "Perimeter Camera 01",
+      "type": "IoT",
+      "ip_address": "172.16.0.101",
+      "status": "Online",
+      "can_be_attacked": true,
+      "in_active_attacks": false,
+      "will_be_attacked": true
+    },
+    {
+      "id": 15,
+      "name": "Smart HVAC Controller",
+      "type": "IoT",
+      "ip_address": "172.16.0.200",
+      "status": "Online",
+      "can_be_attacked": true,
+      "in_active_attacks": false,
+      "will_be_attacked": true
+    },
+    {
+      "id": 9,
+      "name": "Cooling System PLC",
+      "type": "ICS",
+      "ip_address": "10.0.0.12",
+      "status": "Online",
+      "can_be_attacked": true,
+      "in_active_attacks": false,
+      "will_be_attacked": true
+    },
+    {
+      "id": 7,
+      "name": "Web Server Prod-2",
+      "type": "Server",
+      "ip_address": "192.168.2.16",
+      "status": "Online",
+      "can_be_attacked": true,
+      "in_active_attacks": false,
+      "will_be_attacked": true
+    },
+    {
+      "id": 1,
+      "name": "Main Gateway Router",
+      "type": "Network",
+      "ip_address": "192.168.1.1",
+      "status": "Online",
+      "can_be_attacked": true,
+      "in_active_attacks": false,
+      "will_be_attacked": true
+    },
+    {
+      "id": 19,
+      "name": "Email Exchange Server",
+      "type": "Server",
+      "ip_address": "192.168.1.50",
+      "status": "Online",
+      "can_be_attacked": true,
+      "in_active_attacks": false,
+      "will_be_attacked": true
+    },
+    {
+      "id": 3,
+      "name": "Auth Server (AD)",
+      "type": "Server",
+      "ip_address": "192.168.1.10",
+      "status": "Online",
+      "can_be_attacked": true,
+      "in_active_attacks": false,
+      "will_be_attacked": true
+    },
+    {
+      "id": 20,
+      "name": "Guest WiFi Gateway",
+      "type": "Network",
+      "ip_address": "172.16.1.1",
+      "status": "Online",
+      "can_be_attacked": true,
+      "in_active_attacks": false,
+      "will_be_attacked": true
+    },
+    {
+      "id": 10,
+      "name": "Wind Turbine 1 Telemetry",
+      "type": "Sensor",
+      "ip_address": "10.0.1.50",
+      "status": "Online",
+      "can_be_attacked": true,
+      "in_active_attacks": false,
+      "will_be_attacked": true
+    },
+    {
+      "id": 4,
+      "name": "Database Cluster Node 1",
+      "type": "Database",
+      "ip_address": "192.168.1.20",
+      "status": "Online",
+      "can_be_attacked": true,
+      "in_active_attacks": false,
+      "will_be_attacked": true
+    },
+    {
+      "id": 6,
+      "name": "Web Server Prod-1",
+      "type": "Server",
+      "ip_address": "192.168.2.15",
+      "status": "Online",
+      "can_be_attacked": true,
+      "in_active_attacks": false,
+      "will_be_attacked": true
+    },
+    {
+      "id": 5,
+      "name": "Database Cluster Node 2",
+      "type": "Database",
+      "ip_address": "192.168.1.21",
+      "status": "Online",
+      "can_be_attacked": true,
+      "in_active_attacks": false,
+      "will_be_attacked": true
+    },
+    {
+      "id": 12,
+      "name": "Solar Array B Inverter",
+      "type": "Sensor",
+      "ip_address": "10.0.1.60",
+      "status": "Online",
+      "can_be_attacked": true,
+      "in_active_attacks": false,
+      "will_be_attacked": true
+    },
+    {
+      "id": 17,
+      "name": "DevSecOps Terminal",
+      "type": "Endpoint",
+      "ip_address": "192.168.5.42",
+      "status": "Online",
+      "can_be_attacked": true,
+      "in_active_attacks": false,
+      "will_be_attacked": true
+    },
+    {
+      "id": 2,
+      "name": "Core Switch Alpha",
+      "type": "Network",
+      "ip_address": "192.168.1.2",
+      "status": "Online",
+      "can_be_attacked": true,
+      "in_active_attacks": false,
+      "will_be_attacked": true
+    },
+    {
+      "id": 8,
+      "name": "SCADA Control Unit A",
+      "type": "ICS",
+      "ip_address": "10.0.0.5",
+      "status": "Online",
+      "can_be_attacked": true,
+      "in_active_attacks": false,
+      "will_be_attacked": true
+    }
+  ]
+}
+
+'http://127.0.0.1:8000/api/v1/debug/simulation/topology':
+{
+  "roots": [
+    1,
+    20
+  ],
+  "affected_status": {
+    "1": false,
+    "2": false,
+    "3": false,
+    "4": false,
+    "5": false,
+    "6": false,
+    "7": false,
+    "8": false,
+    "9": false,
+    "10": false,
+    "11": false,
+    "12": false,
+    "13": false,
+    "14": false,
+    "15": false,
+    "16": false,
+    "17": false,
+    "18": false,
+    "19": false,
+    "20": false
+  },
+  "equipment": [
+    {
+      "id": 14,
+      "name": "Perimeter Camera 02",
+      "status": "Online",
+      "parent_id": null,
+      "is_parent_offline": false
+    },
+    {
+      "id": 11,
+      "name": "Wind Turbine 2 Telemetry",
+      "status": "Online",
+      "parent_id": null,
+      "is_parent_offline": false
+    },
+    {
+      "id": 18,
+      "name": "Backup NAS Server",
+      "status": "Online",
+      "parent_id": null,
+      "is_parent_offline": false
+    },
+    {
+      "id": 16,
+      "name": "CEO Workstation",
+      "status": "Online",
+      "parent_id": null,
+      "is_parent_offline": false
+    },
+    {
+      "id": 13,
+      "name": "Perimeter Camera 01",
+      "status": "Online",
+      "parent_id": null,
+      "is_parent_offline": false
+    },
+    {
+      "id": 15,
+      "name": "Smart HVAC Controller",
+      "status": "Online",
+      "parent_id": null,
+      "is_parent_offline": false
+    },
+    {
+      "id": 9,
+      "name": "Cooling System PLC",
+      "status": "Online",
+      "parent_id": null,
+      "is_parent_offline": false
+    },
+    {
+      "id": 7,
+      "name": "Web Server Prod-2",
+      "status": "Online",
+      "parent_id": null,
+      "is_parent_offline": false
+    },
+    {
+      "id": 1,
+      "name": "Main Gateway Router",
+      "status": "Online",
+      "parent_id": null,
+      "is_parent_offline": false
+    },
+    {
+      "id": 19,
+      "name": "Email Exchange Server",
+      "status": "Online",
+      "parent_id": null,
+      "is_parent_offline": false
+    },
+    {
+      "id": 3,
+      "name": "Auth Server (AD)",
+      "status": "Online",
+      "parent_id": null,
+      "is_parent_offline": false
+    },
+    {
+      "id": 20,
+      "name": "Guest WiFi Gateway",
+      "status": "Online",
+      "parent_id": null,
+      "is_parent_offline": false
+    },
+    {
+      "id": 10,
+      "name": "Wind Turbine 1 Telemetry",
+      "status": "Online",
+      "parent_id": null,
+      "is_parent_offline": false
+    },
+    {
+      "id": 4,
+      "name": "Database Cluster Node 1",
+      "status": "Online",
+      "parent_id": null,
+      "is_parent_offline": false
+    },
+    {
+      "id": 6,
+      "name": "Web Server Prod-1",
+      "status": "Online",
+      "parent_id": null,
+      "is_parent_offline": false
+    },
+    {
+      "id": 5,
+      "name": "Database Cluster Node 2",
+      "status": "Online",
+      "parent_id": null,
+      "is_parent_offline": false
+    },
+    {
+      "id": 12,
+      "name": "Solar Array B Inverter",
+      "status": "Online",
+      "parent_id": null,
+      "is_parent_offline": false
+    },
+    {
+      "id": 17,
+      "name": "DevSecOps Terminal",
+      "status": "Online",
+      "parent_id": null,
+      "is_parent_offline": false
+    },
+    {
+      "id": 2,
+      "name": "Core Switch Alpha",
+      "status": "Online",
+      "parent_id": null,
+      "is_parent_offline": false
+    },
+    {
+      "id": 8,
+      "name": "SCADA Control Unit A",
+      "status": "Online",
+      "parent_id": null,
+      "is_parent_offline": false
+    }
+  ]
+}
+
+'http://127.0.0.1:8000/api/v1/debug/simulation/stats':
+{
+  "is_running": false,
+  "phase": "normal",
+  "status_counts": {
+    "Online": 20
+  },
+  "total_equipment": 20,
+  "available_for_attack": 20,
+  "available_not_attacked": 20,
+  "active_attacks_count": 0,
+  "attack_history": {},
+  "reason": "Simulation is running normally"
+}
+
+
+Спробував також:
+
+'http://127.0.0.1:8000/api/v1/simulation/fix?equipment_id=1':
+
+{
+  "status": "success",
+  "attack_type": "legacy"
+}
+
+
+Атаки не відновились
+'http://127.0.0.1:8000/api/v1/simulation/start'
+запустило симуляцію заново, без ресету бази даних:
+
+{
+  "status": "started"
+}
+
+
+Після цього атаки розпочались. Додаю дебаг
+'http://127.0.0.1:8000/api/v1/debug/simulation/state':
+
+{
+  "is_running": false,
+  "phase": "normal",
+  "financial_exposure": 0,
+  "active_attacks": {},
+  "attack_history": {},
+  "blocked_ips_count": 0,
+  "active_attacks_count": 0
+}
+
+'http://127.0.0.1:8000/api/v1/debug/simulation/available':
+{
+  "total_equipment": 20,
+  "available_for_attack": 19,
+  "equipment": [
+    {
+      "id": 13,
+      "name": "Perimeter Camera 01",
+      "type": "IoT",
+      "ip_address": "172.16.0.101",
+      "status": "Offline",
+      "can_be_attacked": true,
+      "in_active_attacks": false,
+      "will_be_attacked": true
+    },
+    {
+      "id": 20,
+      "name": "Guest WiFi Gateway",
+      "type": "Network",
+      "ip_address": "172.16.1.1",
+      "status": "Encrypted",
+      "can_be_attacked": false,
+      "in_active_attacks": false,
+      "will_be_attacked": false
+    },
+    {
+      "id": 9,
+      "name": "Cooling System PLC",
+      "type": "ICS",
+      "ip_address": "10.0.0.12",
+      "status": "Online",
+      "can_be_attacked": true,
+      "in_active_attacks": false,
+      "will_be_attacked": true
+    },
+    {
+      "id": 15,
+      "name": "Smart HVAC Controller",
+      "type": "IoT",
+      "ip_address": "172.16.0.200",
+      "status": "Unreachable",
+      "can_be_attacked": true,
+      "in_active_attacks": false,
+      "will_be_attacked": true
+    },
+    {
+      "id": 14,
+      "name": "Perimeter Camera 02",
+      "type": "IoT",
+      "ip_address": "172.16.0.102",
+      "status": "Online",
+      "can_be_attacked": true,
+      "in_active_attacks": false,
+      "will_be_attacked": true
+    },
+    {
+      "id": 11,
+      "name": "Wind Turbine 2 Telemetry",
+      "type": "Sensor",
+      "ip_address": "10.0.1.51",
+      "status": "Online",
+      "can_be_attacked": true,
+      "in_active_attacks": false,
+      "will_be_attacked": true
+    },
+    {
+      "id": 18,
+      "name": "Backup NAS Server",
+      "type": "Server",
+      "ip_address": "192.168.2.100",
+      "status": "Online",
+      "can_be_attacked": true,
+      "in_active_attacks": false,
+      "will_be_attacked": true
+    },
+    {
+      "id": 16,
+      "name": "CEO Workstation",
+      "type": "Endpoint",
+      "ip_address": "192.168.5.10",
+      "status": "Online",
+      "can_be_attacked": true,
+      "in_active_attacks": false,
+      "will_be_attacked": true
+    },
+    {
+      "id": 7,
+      "name": "Web Server Prod-2",
+      "type": "Server",
+      "ip_address": "192.168.2.16",
+      "status": "Online",
+      "can_be_attacked": true,
+      "in_active_attacks": false,
+      "will_be_attacked": true
+    },
+    {
+      "id": 19,
+      "name": "Email Exchange Server",
+      "type": "Server",
+      "ip_address": "192.168.1.50",
+      "status": "Online",
+      "can_be_attacked": true,
+      "in_active_attacks": false,
+      "will_be_attacked": true
+    },
+    {
+      "id": 3,
+      "name": "Auth Server (AD)",
+      "type": "Server",
+      "ip_address": "192.168.1.10",
+      "status": "Online",
+      "can_be_attacked": true,
+      "in_active_attacks": false,
+      "will_be_attacked": true
+    },
+    {
+      "id": 10,
+      "name": "Wind Turbine 1 Telemetry",
+      "type": "Sensor",
+      "ip_address": "10.0.1.50",
+      "status": "Online",
+      "can_be_attacked": true,
+      "in_active_attacks": false,
+      "will_be_attacked": true
+    },
+    {
+      "id": 4,
+      "name": "Database Cluster Node 1",
+      "type": "Database",
+      "ip_address": "192.168.1.20",
+      "status": "Online",
+      "can_be_attacked": true,
+      "in_active_attacks": false,
+      "will_be_attacked": true
+    },
+    {
+      "id": 6,
+      "name": "Web Server Prod-1",
+      "type": "Server",
+      "ip_address": "192.168.2.15",
+      "status": "Online",
+      "can_be_attacked": true,
+      "in_active_attacks": false,
+      "will_be_attacked": true
+    },
+    {
+      "id": 5,
+      "name": "Database Cluster Node 2",
+      "type": "Database",
+      "ip_address": "192.168.1.21",
+      "status": "Online",
+      "can_be_attacked": true,
+      "in_active_attacks": false,
+      "will_be_attacked": true
+    },
+    {
+      "id": 12,
+      "name": "Solar Array B Inverter",
+      "type": "Sensor",
+      "ip_address": "10.0.1.60",
+      "status": "Online",
+      "can_be_attacked": true,
+      "in_active_attacks": false,
+      "will_be_attacked": true
+    },
+    {
+      "id": 17,
+      "name": "DevSecOps Terminal",
+      "type": "Endpoint",
+      "ip_address": "192.168.5.42",
+      "status": "Online",
+      "can_be_attacked": true,
+      "in_active_attacks": false,
+      "will_be_attacked": true
+    },
+    {
+      "id": 2,
+      "name": "Core Switch Alpha",
+      "type": "Network",
+      "ip_address": "192.168.1.2",
+      "status": "Online",
+      "can_be_attacked": true,
+      "in_active_attacks": false,
+      "will_be_attacked": true
+    },
+    {
+      "id": 8,
+      "name": "SCADA Control Unit A",
+      "type": "ICS",
+      "ip_address": "10.0.0.5",
+      "status": "Online",
+      "can_be_attacked": true,
+      "in_active_attacks": false,
+      "will_be_attacked": true
+    },
+    {
+      "id": 1,
+      "name": "Main Gateway Router",
+      "type": "Network",
+      "ip_address": "192.168.1.1",
+      "status": "Online",
+      "can_be_attacked": true,
+      "in_active_attacks": false,
+      "will_be_attacked": true
+    }
+  ]
+}
+
+'http://127.0.0.1:8000/api/v1/debug/simulation/topology':
+{
+  "roots": [
+    1,
+    20
+  ],
+  "affected_status": {
+    "1": false,
+    "2": false,
+    "3": false,
+    "4": false,
+    "5": false,
+    "6": false,
+    "7": false,
+    "8": false,
+    "9": false,
+    "10": false,
+    "11": false,
+    "12": false,
+    "13": true,
+    "14": false,
+    "15": false,
+    "16": true,
+    "17": false,
+    "18": false,
+    "19": false,
+    "20": false
+  },
+  "equipment": [
+    {
+      "id": 13,
+      "name": "Perimeter Camera 01",
+      "status": "Offline",
+      "parent_id": null,
+      "is_parent_offline": true
+    },
+    {
+      "id": 9,
+      "name": "Cooling System PLC",
+      "status": "Online",
+      "parent_id": null,
+      "is_parent_offline": false
+    },
+    {
+      "id": 16,
+      "name": "CEO Workstation",
+      "status": "Offline",
+      "parent_id": null,
+      "is_parent_offline": true
+    },
+    {
+      "id": 20,
+      "name": "Guest WiFi Gateway",
+      "status": "Online",
+      "parent_id": null,
+      "is_parent_offline": false
+    },
+    {
+      "id": 15,
+      "name": "Smart HVAC Controller",
+      "status": "Online",
+      "parent_id": null,
+      "is_parent_offline": false
+    },
+    {
+      "id": 14,
+      "name": "Perimeter Camera 02",
+      "status": "Online",
+      "parent_id": null,
+      "is_parent_offline": false
+    },
+    {
+      "id": 11,
+      "name": "Wind Turbine 2 Telemetry",
+      "status": "Online",
+      "parent_id": null,
+      "is_parent_offline": false
+    },
+    {
+      "id": 18,
+      "name": "Backup NAS Server",
+      "status": "Online",
+      "parent_id": null,
+      "is_parent_offline": false
+    },
+    {
+      "id": 7,
+      "name": "Web Server Prod-2",
+      "status": "Online",
+      "parent_id": null,
+      "is_parent_offline": false
+    },
+    {
+      "id": 19,
+      "name": "Email Exchange Server",
+      "status": "Online",
+      "parent_id": null,
+      "is_parent_offline": false
+    },
+    {
+      "id": 3,
+      "name": "Auth Server (AD)",
+      "status": "Online",
+      "parent_id": null,
+      "is_parent_offline": false
+    },
+    {
+      "id": 10,
+      "name": "Wind Turbine 1 Telemetry",
+      "status": "Online",
+      "parent_id": null,
+      "is_parent_offline": false
+    },
+    {
+      "id": 4,
+      "name": "Database Cluster Node 1",
+      "status": "Online",
+      "parent_id": null,
+      "is_parent_offline": false
+    },
+    {
+      "id": 6,
+      "name": "Web Server Prod-1",
+      "status": "Online",
+      "parent_id": null,
+      "is_parent_offline": false
+    },
+    {
+      "id": 5,
+      "name": "Database Cluster Node 2",
+      "status": "Online",
+      "parent_id": null,
+      "is_parent_offline": false
+    },
+    {
+      "id": 12,
+      "name": "Solar Array B Inverter",
+      "status": "Online",
+      "parent_id": null,
+      "is_parent_offline": false
+    },
+    {
+      "id": 17,
+      "name": "DevSecOps Terminal",
+      "status": "Online",
+      "parent_id": null,
+      "is_parent_offline": false
+    },
+    {
+      "id": 2,
+      "name": "Core Switch Alpha",
+      "status": "Online",
+      "parent_id": null,
+      "is_parent_offline": false
+    },
+    {
+      "id": 8,
+      "name": "SCADA Control Unit A",
+      "status": "Online",
+      "parent_id": null,
+      "is_parent_offline": false
+    },
+    {
+      "id": 1,
+      "name": "Main Gateway Router",
+      "status": "Online",
+      "parent_id": null,
+      "is_parent_offline": false
+    }
+  ]
+}
+
+'http://127.0.0.1:8000/api/v1/debug/simulation/stats':
+{
+  "is_running": false,
+  "phase": "normal",
+  "status_counts": {
+    "Offline": 3,
+    "Online": 17
+  },
+  "total_equipment": 20,
+  "available_for_attack": 20,
+  "available_not_attacked": 20,
+  "active_attacks_count": 0,
+  "attack_history": {},
+  "reason": "Simulation is running normally"
+}
+
+
+
+Також я помітив, що скидання бази даних не відключає поточний цикл симуляції, а запускає ще один.

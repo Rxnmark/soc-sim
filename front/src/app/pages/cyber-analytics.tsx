@@ -1,10 +1,11 @@
-import { useEffect, useState, useMemo, useRef } from "react";
+import { useEffect, useState, useMemo } from "react";
 import { Sidebar } from "../components/sidebar-nav";
 import { Card } from "../components/ui/card";
 import { useTranslation } from "../../context/LanguageContext";
 import { AlertTriangle, Activity, ShieldAlert, LineChartIcon } from "lucide-react";
-import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer } from "recharts";
 import { classifyThreat, isResolvedThreat } from "../components/expert-utils";
+import { NotificationsPopover } from "../components/notifications-popover";
+import { CyberAnalyticsChart } from "./cyber-analytics-chart";
 
 interface ThreatStatistics {
   warning_count: number;
@@ -25,8 +26,9 @@ export default function CyberAnalyticsPage() {
   const [allLogs, setAllLogs] = useState<any[]>([]);
   const [chartHistory, setChartHistory] = useState<{ name: string; warning: number; active: number; critical: number }[]>([]);
   const [loading, setLoading] = useState(true);
-  const chartHistoryRef = useRef(chartHistory);
-  chartHistoryRef.current = chartHistory;
+  const [riskSummary, setRiskSummary] = useState<any>(null);
+  const [archivedThreats, setArchivedThreats] = useState<Set<string>>(new Set());
+  // Fallback: if Set is not available, use plain object
 
   const fetchStatistics = () => {
     fetch("http://127.0.0.1:8000/api/v1/threats/statistics")
@@ -45,14 +47,37 @@ export default function CyberAnalyticsPage() {
       .catch((err) => console.error("Error loading logs:", err));
   };
 
+  const fetchRiskSummary = () => {
+    fetch("http://127.0.0.1:8000/api/v1/risks/summary")
+      .then((res) => res.json())
+      .then((data) => setRiskSummary(data))
+      .catch((err) => console.error("Error fetching risk summary:", err));
+  };
+
+  const fetchArchived = async () => {
+    try {
+      const res = await fetch("http://127.0.0.1:8000/api/v1/threats/archived");
+      const data = await res.json();
+      setArchivedThreats(new Set<string>(data.map((a: any) => String(a.source_ip))));
+    } catch (err) {
+      console.error("Error loading archived:", err);
+    }
+  };
+
   useEffect(() => {
     fetchStatistics();
     fetchLogs();
+    fetchRiskSummary();
+    fetchArchived();
     const statsInterval = setInterval(fetchStatistics, 10000);
     const logInterval = setInterval(fetchLogs, 60000);
+    const riskInterval = setInterval(fetchRiskSummary, 10000);
+    const archivedInterval = setInterval(fetchArchived, 10000);
     return () => {
       clearInterval(statsInterval);
       clearInterval(logInterval);
+      clearInterval(riskInterval);
+      clearInterval(archivedInterval);
     };
   }, []);
 
@@ -67,78 +92,47 @@ export default function CyberAnalyticsPage() {
     allLogs.filter(log => classifyThreat(log.event_type) === "critical" && !isResolvedThreat(log.event_type)), [allLogs]
   );
 
-  // Build base chart data from backend hourly buckets (00:00 to current hour)
+  // Total count for bell badge - match cybersecurity.tsx logic exactly
+  const displayedLogsCount = useMemo(() => {
+    return allLogs.filter(log =>
+      !isResolvedThreat(log.event_type) &&
+      !archivedThreats.has(log.source_ip) &&
+      classifyThreat(log.event_type) !== "warning"
+    ).length;
+  }, [allLogs, archivedThreats]);
+
+  // Build base chart data from allLogs using unified classification (matches cards exactly)
+  // Backend stores timestamps in UTC — convert to local Europe/Kiev (UTC+3) for display
   useEffect(() => {
-    if (!statistics) return;
-    const { hourly } = statistics;
-    const currentHour = new Date().getHours();
+    const localHourNow = (new Date().getUTCHours() + 3) % 24;
+    const hourlyWarning = new Array(24).fill(0);
+    const hourlyActive = new Array(24).fill(0);
+    const hourlyCritical = new Array(24).fill(0);
+
+    for (const log of allLogs) {
+      const ts = new Date(log.timestamp);
+      if (isNaN(ts.getTime())) continue;
+      const localHour = (ts.getHours() + 3) % 24;
+      const cat = classifyThreat(log.event_type);
+      if (isResolvedThreat(log.event_type)) continue;
+      if (cat === "warning") hourlyWarning[localHour] += 1;
+      else if (cat === "active") hourlyActive[localHour] += 1;
+      else if (cat === "critical") hourlyCritical[localHour] += 1;
+    }
+
     const points: { name: string; warning: number; active: number; critical: number }[] = [];
     let cumWarning = 0;
     let cumActive = 0;
     let cumCritical = 0;
-    for (let h = 0; h <= currentHour; h++) {
-      cumWarning += hourly.warning[h] || 0;
-      cumActive += hourly.active[h] || 0;
-      cumCritical += hourly.critical[h] || 0;
+    for (let h = 0; h <= localHourNow; h++) {
+      cumWarning += hourlyWarning[h] || 0;
+      cumActive += hourlyActive[h] || 0;
+      cumCritical += hourlyCritical[h] || 0;
       const hh = String(h).padStart(2, '0');
       points.push({ name: `${hh}:00`, warning: cumWarning, active: cumActive, critical: cumCritical });
     }
     setChartHistory(points);
-  }, [statistics]);
-
-  // Add a live point every 60 seconds
-  useEffect(() => {
-    const interval = setInterval(() => {
-      const newPoint = {
-        name: new Date().toLocaleTimeString('uk-UA', { hour: '2-digit', minute: '2-digit', second: '2-digit' }),
-        warning: warningLogs.length,
-        active: activeLogs.length,
-        critical: criticalLogs.length,
-      };
-      setChartHistory(prev => [...prev.slice(-60), newPoint]);
-    }, 60000);
-    return () => clearInterval(interval);
-  }, [warningLogs.length, activeLogs.length, criticalLogs.length]);
-
-  // Ensure the last point always reflects current time so X-axis ends at now
-  const chartData = useMemo(() => {
-    const now = new Date().toLocaleTimeString('uk-UA', { hour: '2-digit', minute: '2-digit', second: '2-digit' });
-    if (chartHistoryRef.current.length === 0) return chartHistoryRef.current;
-    const last = chartHistoryRef.current[chartHistoryRef.current.length - 1];
-    if (last.name !== now) {
-      return [...chartHistoryRef.current.slice(0, -1), { ...last, name: now }];
-    }
-    return chartHistoryRef.current;
-  }, [chartHistory]);
-
-  // Calculate dynamic Y-axis max from chart history
-  const yMax = useMemo(() => {
-    if (chartData.length === 0) return 10;
-    const maxVal = Math.max(
-      ...chartData.flatMap(d => [d.warning, d.active, d.critical]),
-    );
-    return Math.max(10, Math.ceil(maxVal * 1.2));
-  }, [chartData]);
-
-  // Build X-axis tick labels: 00:00, every full hour, and the last point's time
-  const xTicks = useMemo(() => {
-    if (chartData.length === 0) return [];
-    const tickSet = new Set<string>();
-    const lastPoint = chartData[chartData.length - 1];
-
-    // Always show 00:00
-    tickSet.add("00:00");
-
-    // Show every full hour
-    for (let h = 0; h <= 23; h++) {
-      tickSet.add(`${String(h).padStart(2, '0')}:00`);
-    }
-
-    // Always show the last point's time
-    tickSet.add(lastPoint.name);
-
-    return Array.from(tickSet);
-  }, [chartData]);
+  }, [allLogs]);
 
   if (loading) {
     return (
@@ -156,11 +150,11 @@ export default function CyberAnalyticsPage() {
       <Sidebar />
       <div className="flex-1 flex flex-col overflow-hidden">
         <header className="h-16 border-b border-border bg-card flex items-center justify-between px-6 shrink-0">
-          <div>
-            <h1 className="text-card-foreground font-semibold">{t('analytics.title', 'Security Analytics')}</h1>
-            <p className="text-xs text-muted-foreground">{t('analytics.subtitle', 'Security metrics and threat analytics')}</p>
-          </div>
-          <div className="flex items-center gap-2">
+          <div className="flex items-center gap-4">
+            <div>
+              <h1 className="text-card-foreground font-semibold">{t('analytics.title', 'Security Analytics')}</h1>
+              <p className="text-xs text-muted-foreground">{t('analytics.subtitle', 'Security metrics and threat analytics')}</p>
+            </div>
             <div className="flex items-center gap-2 px-3 py-1.5 rounded-md bg-emerald-500/10 border border-emerald-500/20">
               <span className="relative flex h-2 w-2">
                 <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75"></span>
@@ -169,12 +163,12 @@ export default function CyberAnalyticsPage() {
               <span className="text-[10px] text-emerald-500 font-medium">LIVE</span>
             </div>
           </div>
+          <NotificationsPopover apiData={riskSummary} displayedLogsCount={displayedLogsCount} />
         </header>
 
-        <main className="flex-1 p-6 overflow-auto">
-          <div className="max-w-[1800px] mx-auto space-y-6">
-            {/* Summary Cards */}
-            <div className="grid grid-cols-3 gap-4">
+        <main className="flex-1 flex flex-col p-6 gap-4 overflow-hidden">
+          {/* Summary Cards */}
+          <div className="grid grid-cols-3 gap-4 shrink-0">
               <Card className="p-6 bg-card border-border">
                 <div className="flex items-start justify-between mb-3">
                   <div>
@@ -219,66 +213,21 @@ export default function CyberAnalyticsPage() {
             </div>
 
             {/* Hourly Chart */}
-            <Card className="p-6 border-border">
+            <Card className="p-6 border-border flex-1 min-h-0 flex flex-col">
               <div className="flex items-center gap-2 mb-4">
                 <LineChartIcon className="w-5 h-5 text-primary" />
                 <h3 className="text-lg font-semibold text-card-foreground">
                   {t('threatStats.hourly_chart', 'Hourly Attack Distribution')}
                 </h3>
               </div>
-              <ResponsiveContainer width="100%" height={350}>
-                <LineChart data={chartData}>
-                  <CartesianGrid strokeDasharray="3 3" stroke="#333" />
-                  <XAxis 
-                    dataKey="name" 
-                    stroke="#888" 
-                    fontSize={12}
-                    ticks={xTicks}
-                  />
-                  <YAxis 
-                    stroke="#888" 
-                    fontSize={12} 
-                    domain={[0, yMax]}
-                    allowDecimals={false}
-                  />
-                  <Tooltip
-                    contentStyle={{ 
-                      backgroundColor: '#1a1a2e', 
-                      border: '1px solid #333', 
-                      borderRadius: '8px',
-                      boxShadow: '0 4px 6px rgba(0, 0, 0, 0.3)'
-                    }}
-                    labelStyle={{ color: '#fff' }}
-                  />
-                  <Legend />
-                  <Line 
-                    type="monotone" 
-                    dataKey="warning" 
-                    name={t('threatCategories.warning', 'Warning')} 
-                    stroke="#eab308" 
-                    strokeWidth={2}
-                    dot={false}
-                  />
-                  <Line 
-                    type="monotone" 
-                    dataKey="active" 
-                    name={t('threatCategories.active', 'Active')} 
-                    stroke="#f97316" 
-                    strokeWidth={2}
-                    dot={false}
-                  />
-                  <Line 
-                    type="monotone" 
-                    dataKey="critical" 
-                    name={t('threatCategories.critical', 'Critical')} 
-                    stroke="#ef4444" 
-                    strokeWidth={2}
-                    dot={false}
-                  />
-                </LineChart>
-              </ResponsiveContainer>
+              <CyberAnalyticsChart
+                warningLogs={warningLogs}
+                activeLogs={activeLogs}
+                criticalLogs={criticalLogs}
+                chartHistory={chartHistory}
+                setChartHistory={setChartHistory}
+              />
             </Card>
-          </div>
         </main>
       </div>
     </div>

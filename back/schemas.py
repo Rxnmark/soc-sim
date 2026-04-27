@@ -9,6 +9,7 @@ class ThreatResponse(BaseModel):
     severity: str
     category: str
     timestamp: datetime
+    source_ip: str = ""
 
     class Config:
         from_attributes = True

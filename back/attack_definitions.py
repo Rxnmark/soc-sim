@@ -12,13 +12,9 @@ SIMULATION_ATTACKS = {
             "Massive incoming traffic flood detected targeting {target_name}.",
             "DDoS attack detected: {attack_type} from multiple sources.",
             "Service degradation due to traffic overload on {target_name}.",
-            "Failed DDoS attempt blocked by firewall - {attack_type} detected and mitigated.",
-            "Port scan detected from external source - reconnaissance activity on {target_name}.",
-            "Unauthorized access attempt blocked - brute-force login detected on {target_name}.",
-            "SQL injection attempt blocked by WAF on {target_name}.",
-            "Security warning - suspicious network activity detected on {target_name}.",
         ],
         "effect": "offline",
+        "auto_cleanup_seconds": 10,
     },
     "Stealth": {
         "types": ["Data Leak", "Spyware", "Covert Channel", "Data Exfiltration"],
@@ -29,6 +25,7 @@ SIMULATION_ATTACKS = {
         ],
         "effect": "stealth",
         "financial_impact_per_tick": 50000,
+        "auto_cleanup_seconds": 60,
     },
     "Ransomware": {
         "types": ["Ransomware", "CryptoLocker", "RansomWare-X", "Encryption Attack"],
@@ -37,9 +34,27 @@ SIMULATION_ATTACKS = {
             "Unauthorized file encryption attempt on {target_name}.",
             "Ransomware payload execution detected on {target_name}.",
         ],
-        "effect": "ransomware",
+        "effect": "high",
         "ransomware_timeout_seconds": 15,
         "encrypted_recovery_seconds": 30,
+    },
+    "Minor": {
+        "types": [
+            "Port Scan",
+            "Brute-force Attempt",
+            "SQL Injection Attempt",
+            "Policy Violation",
+            "Reconnaissance",
+        ],
+        "log_events": [
+            "Port scan detected from external source - reconnaissance activity on {target_name}.",
+            "Unauthorized access attempt blocked - brute-force login detected on {target_name}.",
+            "SQL injection attempt blocked by WAF on {target_name}.",
+            "Security warning - suspicious network activity detected on {target_name}.",
+            "Reconnaissance activity detected - scanning of network services on {target_name}.",
+        ],
+        "effect": "minor",
+        "auto_cleanup_seconds": 30,
     },
 }
 
@@ -47,13 +62,13 @@ SIMULATION_ATTACKS = {
 CRITICAL_GATEWAY_IDS = {1}
 
 # Default attack weights for probability selection
-DEFAULT_ATTACK_WEIGHTS = {"DDoS": 3, "Stealth": 4, "Ransomware": 2}
+DEFAULT_ATTACK_WEIGHTS = {"DDoS": 3, "Stealth": 4, "Ransomware": 2, "Minor": 5}
 
 # Phase escalation threshold (seconds)
 ESCALATION_PHASE_SECONDS = 180  # 3 minutes
 
 # Stealth financial exposure interval (seconds)
-STEALTH_FINANCIAL_INTERVAL = 5
+STEALTH_FINANCIAL_INTERVAL = 30
 
 # Normal attack delay range (seconds)
 NORMAL_ATTACK_DELAY_MIN = 20
@@ -65,6 +80,3 @@ ESCALATED_ATTACK_DELAY_MAX = 20
 
 # Reboot duration (seconds)
 STANDARD_REBOOT_SECONDS = 5
-
-# Game-over check interval (seconds)
-GAME_OVER_CHECK_INTERVAL = 2
