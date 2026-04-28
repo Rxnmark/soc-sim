@@ -24,7 +24,10 @@ class SimulationManager(SimulationCore):
         self.financial_exposure: float = 0.0
         self.active_attacks: dict = {}
         self.attack_history: dict = {}
+        self.cumulative_financial_by_type: dict[str, float] = {}
         self.blocked_ips: set = set()
+        self.is_paused: bool = False
+        self.speed_multiplier: float = 1.0
         self._task: asyncio.Task | None = None
         self._next_attack_delay: float = 0
         self._stealth_last_tick: float = 0
@@ -41,7 +44,10 @@ class SimulationManager(SimulationCore):
         self.financial_exposure = 0.0
         self.active_attacks = {}
         self.attack_history = {}
+        self.cumulative_financial_by_type = {}
         self.blocked_ips = set()
+        self.is_paused = False
+        self.speed_multiplier = 1.0
         self._next_attack_delay = self._random_delay()
         self._stealth_last_tick = self.start_time
 
@@ -150,4 +156,6 @@ class SimulationManager(SimulationCore):
             "phase": self.current_phase,
             "financial_exposure": self.financial_exposure,
             "active_attacks_count": len(self.active_attacks),
+            "is_paused": self.is_paused,
+            "speed_multiplier": self.speed_multiplier,
         }

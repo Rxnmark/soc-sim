@@ -3,7 +3,7 @@ import { Button } from "./ui/button";
 import { Badge } from "./ui/badge";
 import { Card } from "./ui/card";
 import { useTranslation } from "../../context/LanguageContext";
-import { getCardClass, getCriticalityRank, isResolvedThreat, isMinorEventType, formatDate, translateLogEventType, getEventDescription, getLogStyle } from "./expert-utils";
+import { getCardClass, getCriticalityRank, isResolvedThreat, isMinorEventType, formatDate, translateLogEventType, getEventDescription, getLogStyle, classifyThreat } from "./expert-utils";
 import { motion, AnimatePresence } from "framer-motion";
 
 interface SecurityLog {
@@ -27,6 +27,7 @@ export function ExpertPanelDetail({ log, isFixing, fixMessage, onBack, onApplyFi
   const { t } = useTranslation();
   const style = getLogStyle(log.event_type);
   const isResolved = isResolvedThreat(log.event_type);
+  const category = classifyThreat(log.event_type);
 
   return (
     <Card className="flex flex-col h-full w-full bg-card border border-border rounded-lg shadow-sm overflow-y-auto custom-scrollbar p-3 gap-2" style={{ gap: '2px' }}>
@@ -46,7 +47,7 @@ export function ExpertPanelDetail({ log, isFixing, fixMessage, onBack, onApplyFi
       <div className="flex items-center gap-2 mb-2">
         <Badge variant="outline" className={`${style.badge} uppercase px-2.5 py-0.5 text-[11px]`}>
           {style.icon}
-          <span className="ml-1.5">{isResolved ? t('logs.resolved', 'Resolved') : log.event_type.includes("Unauthorized") ? t('logs.critical', 'Critical') : t('logs.warning', 'Warning')}</span>
+          <span className="ml-1.5">{isResolved ? t('logs.resolved', 'Resolved') : t(`logs.${category}`, category === 'critical' ? 'Critical' : category === 'active' ? 'High' : 'Warning')}</span>
         </Badge>
         {!isResolved && (
           <Badge variant="outline" className="bg-blue-500/10 text-blue-500 border-blue-500/20 uppercase px-2.5 py-0.5 text-[11px]">

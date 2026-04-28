@@ -1,7 +1,7 @@
 import { useState, useEffect, useMemo } from "react";
 import { Sidebar } from "../components/sidebar-nav";
 import { 
-  Server, Search, RefreshCw, Network, LayoutGrid 
+  Server, Search, Network, LayoutGrid 
 } from "lucide-react";
 import { Button } from "../components/ui/button";
 import { NetworkTopologyMap } from "../components/network-topology-map";
@@ -37,14 +37,12 @@ export default function CyberAssetsPage() {
   const [assets, setAssets] = useState<Asset[]>([]);
   const [loading, setLoading] = useState(true);
   const [searchQuery, setSearchQuery] = useState("");
-  const [isRefreshing, setIsRefreshing] = useState(false);
   const [riskSummary, setRiskSummary] = useState<any>(null);
   const [allLogs, setAllLogs] = useState<SecurityLog[]>([]);
   const [archivedThreats, setArchivedThreats] = useState<Set<string>>(new Set());
   const [layoutMode, setLayoutMode] = useState<'grid' | 'hierarchical'>('hierarchical');
 
-  const fetchAssets = async (isManual = false) => {
-    if (isManual) setIsRefreshing(true);
+  const fetchAssets = async () => {
     try {
       const res = await fetch("http://127.0.0.1:8000/api/v1/equipment");
       const data = await res.json();
@@ -53,7 +51,6 @@ export default function CyberAssetsPage() {
       console.error("Error fetching assets:", error);
     } finally {
       setLoading(false);
-      if (isManual) setTimeout(() => setIsRefreshing(false), 500);
     }
   };
 
@@ -86,7 +83,7 @@ export default function CyberAssetsPage() {
     fetchLogs();
     fetchRiskSummary();
     fetchArchived();
-    const interval = setInterval(() => fetchAssets(false), 5000);
+    const interval = setInterval(() => fetchAssets(), 5000);
     const logInterval = setInterval(fetchLogs, 5000);
     const riskInterval = setInterval(fetchRiskSummary, 5000);
     const archivedInterval = setInterval(fetchArchived, 5000);
@@ -115,14 +112,25 @@ export default function CyberAssetsPage() {
         
         {/* HEADER */}
         <header className="h-16 border-b border-border bg-card flex items-center justify-between px-6 z-10 shrink-0">
-          <div>
-            <h1 className="text-card-foreground font-semibold flex items-center gap-2">
-              <Server className="w-5 h-5 text-primary" />
-              {t('assets.title')}
-            </h1>
+          <div className="flex items-center gap-4">
+            <div className="w-[280px] shrink-0 text-center">
+              <h1 className="text-card-foreground font-semibold">{t('assets.title')}</h1>
+              <p className="text-xs text-muted-foreground">{t('assets.subtitle')}</p>
+            </div>
+            <div className="flex items-center gap-2 px-2 py-1">
+              <div className="flex items-center gap-2 px-2 py-1 rounded-md bg-emerald-500/10 border border-emerald-500/20">
+                <span className="relative flex h-2 w-2">
+                  <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75"></span>
+                  <span className="relative inline-flex rounded-full h-2 w-2 bg-emerald-500"></span>
+                </span>
+                <span className="text-[10px] text-emerald-500 font-medium">LIVE</span>
+              </div>
+              <p className="text-xs text-muted-foreground">
+                {t('riskManagement.last_updated', 'Last updated')}: <span className="font-mono">{new Date().toLocaleTimeString()}</span>
+              </p>
+            </div>
           </div>
           <div className="flex items-center gap-4">
-            
             {/* ТУМБЛЕР РЕЖИМУ КАРТИ */}
             <div className="flex items-center bg-muted/50 rounded-lg p-1 border border-border">
               <button
@@ -151,9 +159,6 @@ export default function CyberAssetsPage() {
                 className="pl-9 pr-4 py-2 rounded-lg bg-muted border border-border text-sm text-foreground focus:outline-none focus:ring-1 focus:ring-primary w-64"
               />
             </div>
-            <Button variant="outline" size="icon" onClick={() => fetchAssets(true)} disabled={isRefreshing}>
-              <RefreshCw className={`w-4 h-4 text-muted-foreground ${isRefreshing ? 'animate-spin text-primary' : ''}`} />
-            </Button>
             <NotificationsPopover apiData={riskSummary} displayedLogsCount={displayedLogsCount} />
           </div>
         </header>

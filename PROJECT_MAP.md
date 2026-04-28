@@ -9,6 +9,34 @@
 
 Система підтримує двомовний інтерфейс (українська/англійська) та включає механізм симуляції загроз та експертну систему з автоматичним реагуванням на інциденти.
 
+**Загальна кількість рядків коду: 12 229** (скановано через `count_lines.py`, виключено lock-файли та debug.txt)
+
+**Top 20 файлів за кількістю рядків (без lock-файлів):**
+
+| Файл | Рядків |
+|------|--------|
+| `front/src/app/components/ui/sidebar.tsx` | 726 |
+| `front/src/app/components/ui/chart.tsx` | 353 |
+| `front/src/app/components/ui/menubar.tsx` | 276 |
+| `front/src/app/components/ui/dropdown-menu.tsx` | 257 |
+| `front/src/app/components/ui/context-menu.tsx` | 252 |
+| `front/src/app/components/ui/carousel.tsx` | 241 |
+| `front/src/app/pages/cyber-analytics.tsx` | 240 |
+| `front/src/app/pages/analytics.tsx` | ~200 |
+| `front/src/app/pages/cyber-threats.tsx` | 196 |
+| `front/src/app/components/sim-control-panel.tsx` | 268 |
+| `back/main_api.py` | 193 |
+| `back/simulation_core.py` | 193 |
+| `back/requirements.txt` | 189 |
+| `front/src/app/components/ui/select.tsx` | 189 |
+| `front/src/app/components/expert-utils.tsx` | 185 |
+| `front/src/app/pages/cybersecurity.tsx` | 184 |
+| `front/src/styles/theme.css` | 181 |
+| `front/src/app/components/risk-matrix.tsx` | 179 |
+| `front/src/app/components/ui/command.tsx` | 177 |
+| `front/src/app/pages/cyber-assets.tsx` | 177 |
+| `front/src/app/pages/cyber-threats-components.tsx` | 174 |
+
 ## 🏗 Architecture & File Structure
 
 ### Backend (`back/`)
@@ -25,7 +53,7 @@
 | `back/attack_definitions.py` | Конфігурація атак: `SIMULATION_ATTACKS` (DDoS з підтипами: Traffic Flood, SYN Flood, NTP Amplification, DNS Amplification, Slowloris, HTTP Flood, UDP Flood; Stealth; Ransomware), `CRITICAL_GATEWAY_IDS`, константи часу. |
 | `back/simulation_core.py` | **SimulationCore** — асинхронна логіка гри: `_game_loop()`, `_spawn_attack()`, `_schedule_ransomware_encryption()`, `_apply_stealth_financial_impact()`, `_update_topology_dependencies()` (каскадна ескалація offline-статусу). Імпортує `_random_delay()`, `_pick_attack_type()`, `_generate_unique_ip()`, `_all_equipment_down()` з `simulation_helpers`. |
 | `back/simulation_helpers.py` | **Допоміжні функції симуляції** — `_random_delay()`, `_pick_attack_type()`, `_generate_unique_ip()`, `_all_equipment_down()`. Використовується `simulation_core.py`. |
-| `back/simulation_topology.py` | **Топологія залежностей**: `TOPOLOGY_CONNECTIONS` — explicit connections між пристроями; `get_connected_devices()`, `get_parent()`, `get_children()`, `get_ancestors()`, `get_descendants()`, `get_subordinate_ips()`, `get_device_by_ip()`, `get_all_device_ips()`, `get_all_device_ids()`. |
+| `back/simulation_topology.py` | **Топологія залежностей та фінансовий вплив**: `TOPOLOGY_CONNECTIONS` — explicit connections між пристроями; `FINANCIAL_PER_TICK` — фінансовий вплив на тик (Stealth: 50000, DDoS: 25000, Ransomware: 80000); `get_connected_devices()`, `get_parent()`, `get_children()`, `get_ancestors()`, `get_descendants()`, `get_subordinate_ips()`, `get_device_by_ip()`, `get_all_device_ips()`, `get_all_device_ids()`. |
 | `back/simulation.py` | **SimulationManager** (наспадник SimulationCore) — управління життєвим циклом: `start()`, `stop()`, `apply_fix()` (non-blocking з `_recovery_equipment()` фоновим завданням), `get_status()`. Після відновлення обладнання викликає `_update_topology_dependencies` для перерахунку статусів дочірніх пристроїв. |
 | `back/database.py` | Конфігурація підключень: PostgreSQL (SQLAlchemy) + MongoDB (Motor async). Змінні `engine`, `SessionLocal`, `security_logs_collection`. |
 | `back/docker-compose.yml` | Docker-конфігурація для запуску PostgreSQL та MongoDB сервісів. |
@@ -38,16 +66,16 @@
 | `front/src/index.html` | HTML-шаблон з `<script type="module" src="/main.tsx">` для вказівки точки входу. Містить script для відновлення theme з `localStorage`. |
 | `front/src/main.tsx` | Точка входу React-додатку. Рендерить `<App />` з `React.StrictMode`. |
 | `front/src/app/App.tsx` | Кореневий компонент. Обгортає `LanguageProvider` та `RouterProvider`. |
-| `front/src/app/routes.tsx` | React Router v7 маршрутизація: 15 маршрутів (Risk Management, Cybersecurity, Analytics, тощо). |
+| `front/src/app/routes.tsx` | React Router v7 маршрутизація: 9 маршрутів (Risk Management, Cybersecurity, Analytics, Reports, Settings). |
 | `front/src/context/LanguageContext.tsx` | Context API для перемикання мов (EN/UK). Зберігає вибір у `localStorage`. Підтримує nested ключі перекладу. |
 | `front/src/translations/uk.ts` | **UK переклади (re-export)** — імпортує `translations` з `./uk-core`. |
 | `front/src/translations/uk-core.ts` | **UK базові переклади** — navigation, common, risk_management, cybersecurity, equipment, expert_system, export_modal, notifications, login, settings, not_found, assets, analytics, data, threats, cyber_settings, risk_nav_items, cyber_nav_items. Імпортує `threatKeys` з `./uk-threats`, `extKeys` з `./uk-extended`. |
 | `front/src/translations/uk-threats.ts` | **UK загрози** — `threatKeys` (threats.common, threats.categories, threats.types, threats.ddos_subtypes, threats.auto_fix). |
-| `front/src/translations/uk-extended.ts` | **UK розширені переклади** — `extKeys` (expert_panel, cyber_assets, cyber_threats, cyber_analytics, risk_matrix, critical_threats, equipment_table, login_modal, sidebar_nav, network_topology, notifications_popover, export_modal, placeholders). |
+| `front/src/translations/uk-extended.ts` | **UK розширені переклади** — `extKeys` (expert_panel, cyber_assets, cyber_threats, cyber_analytics, risk_matrix, critical_threats, equipment_table, login_modal, sidebar_nav, network_topology, notifications_popover, export_modal, placeholders, exportModal). |
 | `front/src/translations/en.ts` | **EN переклади (re-export)** — імпортує `translations` з `./en-core`. |
 | `front/src/translations/en-core.ts` | **EN базові переклади** — navigation, common, risk_management, cybersecurity, equipment, expert_system, export_modal, notifications, login, settings, not_found, assets, analytics, data, threats, cyber_settings, risk_nav_items, cyber_nav_items. Імпортує `threatKeys` з `./en-threats`, `extKeys` з `./en-extended`. |
 | `front/src/translations/en-threats.ts` | **EN загрози** — `threatKeys` (threats.common, threats.categories, threats.types, threats.ddos_subtypes, threats.auto_fix). |
-| `front/src/translations/en-extended.ts` | **EN розширені переклади** — `extKeys` (expert_panel, cyber_assets, cyber_threats, cyber_analytics, risk_matrix, critical_threats, equipment_table, login_modal, sidebar_nav, network_topology, notifications_popover, export_modal, placeholders). |
+| `front/src/translations/en-extended.ts` | **EN розширені переклади** — `extKeys` (expert_panel, cyber_assets, cyber_threats, cyber_analytics, risk_matrix, critical_threats, equipment_table, login_modal, sidebar_nav, network_topology, notifications_popover, export_modal, placeholders, exportModal). |
 | `front/src/styles/` | CSS стилі: `index.css`, `tailwind.css`, `theme.css`, `fonts.css`. |
 | `front/src/vite.config.js` | Vite конфігурація з TailwindCSS та React plugins. |
 | `front/src/package.json` | Залежності: MUI 7, React Router 7, Recharts, TailwindCSS 4, Vite 6, Radix UI, Motion, React DnD, Sonner, date-fns, react, react-dom. |
@@ -55,23 +83,19 @@
 ### Frontend Pages (`front/src/app/pages/`)
 | File | Description |
 |------|-------------|
-| `risk-management.tsx` | **Risk Management Dashboard** — Layout: Header (Search, Export, NotificationsPopover), KPI-картки, RiskMatrix (лівa половина), чарти (права половина), CriticalThreats. API: `/api/v1/risks/summary`, `/api/v1/logs`, `/api/v1/threats/archived`. Автооновлення кожні 5 сек. |
+| `risk-management.tsx` | **Risk Management Dashboard** — Layout: Header (Export, NotificationsPopover), KPI-картки, RiskMatrix (лівa половина), чарти (права половина), CriticalThreats. LIVE + Last updated у одному рядку. Без refresh button (auto-refresh кожні 5 сек). API: `/api/v1/risks/summary`, `/api/v1/logs`, `/api/v1/threats/archived`. |
 | `risk-management-hooks.ts` | **Custom hooks** — `useRiskData()`: fetch summary/logs/archived + розрахунки. `useBusinessRisks()`: fetch logs, класифікація атак (DDoS/Ransomware/Stealth), categoryChartData + financialImpactData. |
 | `risk-management-charts.tsx` | **Чарти** — `RiskCategoryDonut`: DonutChart (DDoS/Ransomware/Stealth). `RiskFinancialBar`: BarChart з фінансовим вплигом. Кольори: DDoS=червоний, Ransomware=помаранчевий, Stealth=фіолетовий. |
 | `cybersecurity.tsx` | **Cybersecurity Dashboard** — головна сторінка кібербезпеки. KPI-картки (critical vulnerabilities, medium risks, sensors offline), EquipmentTable з ієрархічним обладнанням, ExpertPanel для аналізу логів. Індикатор статусу системи (Active Threats / Maintenance / Secure). |
-| `risk-analysis.tsx` | Placeholder-сторінка для майбутньої детальної аналітики ризиків. |
-| `projects.tsx` | Placeholder-сторінка для управління проектами. |
-| `analytics.tsx` | Placeholder-сторінка для аналітики. |
-| `reports.tsx` | Placeholder-сторінка для звітів. |
-| `team.tsx` | Placeholder-сторінка для управління командою. |
+| `analytics.tsx` | **Business Analytics Dashboard** — фінансовий дашборд ризиків (DDoS, Ransomware, Stealth). Картки з фінансовим впливом у USD, графік за часовими інтервалами (auto-refresh 5-10 сек). |
+| `reports.tsx` | Placeholder-сторінка для звітів (перепрофілюється). |
 | `settings.tsx` | Сторінка глобальних налаштувань. |
 | `cyber-threats.tsx` | **Threat Statistics** — сторінка статистики загроз з трьома колонками (Незначні, Потребують уваги, Критичні). Використовує ColumnLogs з cyber-threats-components.tsx. NotificationsPopover з riskSummary + displayedLogsCount. API: `/api/v1/threats/statistics`, `/api/v1/logs`, `/api/v1/risks/summary`, `/api/v1/threats/archived`. |
 | `cyber-threats-components.tsx` | **Компоненти для cyber-threats** — `ColumnLogs` (колонка з логами загроз), `LogCard` (картка події), `ArchivedLogCard` (архівована картка). |
-| `cyber-assets.tsx` | **Cyber Assets (Реєстр захисту активів)** — інтерактивна мапа мережевого обладнання (NetworkTopologyMap). Хедер з пошуком, кнопкою оновлення та NotificationsPopover. API: `/api/v1/equipment`, `/api/v1/logs`, `/api/v1/risks/summary`, `/api/v1/threats/archived`. Автооновлення кожні 5 сек. displayedLogsCount фільтрує логи: `!isResolvedLog && !archivedThreats && classifyThreat !== "warning"`. |
-| `cyber-data.tsx` | Placeholder-сторінка для управління даними. |
+| `cyber-assets.tsx` | **Cyber Assets (Реєстр захисту активів)** — інтерактивна мапа мережевого обладнання (NetworkTopologyMap). Хедер з пошуком, тумблером режиму (grid/hierarchical) та NotificationsPopover. Без refresh button (auto-refresh кожні 5 сек). API: `/api/v1/equipment`, `/api/v1/logs`, `/api/v1/risks/summary`, `/api/v1/threats/archived`. displayedLogsCount фільтрує логи: `!isResolvedLog && !archivedThreats && classifyThreat !== "warning"`. |
 | `cyber-analytics.tsx` | **Cyber Analytics** — сторінка з графіком атак. Імпортує `CyberAnalyticsChart` з `./cyber-analytics-chart`. API: `/api/v1/threats/statistics`, `/api/v1/logs`. |
 | `cyber-analytics-chart.tsx` | **Графік атак у реальному часі** — Recharts LineChart. Три лінії: Warning (жовта), Active (помаранчева), Critical (червона). Базові точки з `statistics.hourly` (00:00 до поточної години). Live-точки кожні 60 сек. X-вісь: 00:00, погодинні мітки. `dot={false}`. |
-| `cyber-settings.tsx` | Placeholder-сторінка для налаштувань кібербезпеки. |
+| `analytics-chart.tsx` | **Графік фінансового впливу** — Recharts LineChart. Три лінії: DDoS (червона #ef4444), Ransomware (помаранчева #f97316), Stealth (фіолетова #a855f7). Live-точки кожні 5 сек. Використовується на Business Analytics сторінці. |
 | `not-found.tsx` | 404 сторінка. |
 | `placeholder.tsx` | **Універсальний placeholder-компонент** — відображає повідомлення "Page Under Construction" з кнопкою повернення. Використовує Sidebar для навігації. |
 
@@ -87,8 +111,9 @@
 | `risk-matrix.tsx` | **Матриця ризиків 5×5** (Probability × Impact). Кольорове кодування: червоний (≥15), жовтий (≥8), зелений (<8). Крапки показують ризики за категоріями (Cyber, Operational, Financial). Підсвічування результатів пошуку. |
 | `critical-threats.tsx` | **Топ критичних загроз** — список активних ризиків, відсортованих за score (probability × impact). Фінансовий вплив розраховується як `impact * 750000 + 45000`. Пошук за назвою/категорією. |
 | `equipment-table.tsx` | **Таблиця обладнання** — список моніторених пристроїв з фільтрацією по IP, пошуком, сортуванням за risk_level. Статуси: Online, Rebooting, Offline, Unreachable, Encrypted. Кнопка фільтрації логів по IP. Автооновлення кожні 5 сек. |
-| `export-modal.tsx` | Модальне вікно експорту звітів. |
+| `export-modal.tsx` | Модальне вікно експорту звітів (JSON/CSV з реальними даними, `useTranslation`, `reportData` проп). |
 | `notifications-popover.tsx` | **Спливаючі нотифікації** — дзвіночок з popover для системних сповіщень. Приймає `apiData` (riskSummary з `critical_threats`, `high_risks`, `sensors_offline`) та опційний `displayedLogsCount` для бейджа. Відображає активні загрози з іконками, кольоровим кодуванням, кнопкою "Mark all as read". Функція `replaceCount()` для підстановки `{count}` у перекладах (t() не підтримує інтерполяцію). Переклад через `useTranslation`. |
+| `sim-control-panel.tsx` | **Панель керування симуляцією** — фіксована кнопка зверху (Cpu + "SIM CONTROL"), Popover з: статус (Running/Paused/Stopped), telemetry (Backend Speed, Auto-Fix Speed, Active Attacks), Play/Pause/Resume/Stop, швидкість (1x/2x/4x/10x), New Threat / DB Reset, Auto-Neutralize AI (Switch + інтервал). Використовує `isResolvedThreat`/`isMinorEventType` з `expert-utils`. Ghost Sweeper для очищення stale states. |
 | `network-topology-map.tsx` | **Візуалізація мережевої топології** — імпортує `NetworkTopologyMapLayout` з `./network-topology-map-layout`. Чотири сегментовані мережі: Core Backbone, Enterprise, IoT, ICS. |
 | `network-topology-map-layout.tsx` | **Лейаут топології** — `NetworkTopologyMapLayout` компонент для відображення мережевої топології. Використовує explicit connections для визначення зв'язків між обладнанням. Каскадна ескалація offline-статусу: якщо батьківський пристрій offline, діти стають Unreachable. Стабільні позиції вузлів (ID-based). Горизонтальний спейс: 600px. Кольорове кодування: червоний (Critical), жовтий (Medium), сірий (Offline/Unreachable), зелений (Safe). |
 | `figma/ImageWithFallback.tsx` | Компонент зображення з fallback. |

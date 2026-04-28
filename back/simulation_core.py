@@ -41,6 +41,12 @@ class SimulationCore(SimulationTopology):
             now = asyncio.get_event_loop().time()
             elapsed = now - self.start_time
 
+            # --- Pause logic ---
+            if self.is_paused:
+                loop_start += 1
+                await asyncio.sleep(1)
+                continue
+
             # --- Phase escalation after ESCALATION_PHASE_SECONDS ---
             if elapsed >= ESCALATION_PHASE_SECONDS and self.current_phase != "escalated":
                 self.current_phase = "escalated"
@@ -53,7 +59,7 @@ class SimulationCore(SimulationTopology):
             # --- Attack timer ---
             if now - loop_start >= self._next_attack_delay:
                 loop_start = now
-                self._next_attack_delay = self._random_delay()
+                self._next_attack_delay = self._random_delay() * getattr(self, 'speed_multiplier', 1.0)
                 print(f"[SIM] Attack timer triggered: next_attack_delay={self._next_attack_delay:.1f}s, loop_start={loop_start:.1f}, now={now:.1f}")
                 await self._spawn_attack()
             else:

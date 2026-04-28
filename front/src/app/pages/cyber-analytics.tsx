@@ -151,16 +151,21 @@ export default function CyberAnalyticsPage() {
       <div className="flex-1 flex flex-col overflow-hidden">
         <header className="h-16 border-b border-border bg-card flex items-center justify-between px-6 shrink-0">
           <div className="flex items-center gap-4">
-            <div>
+            <div className="w-[280px] shrink-0 text-center">
               <h1 className="text-card-foreground font-semibold">{t('analytics.title', 'Security Analytics')}</h1>
               <p className="text-xs text-muted-foreground">{t('analytics.subtitle', 'Security metrics and threat analytics')}</p>
             </div>
-            <div className="flex items-center gap-2 px-3 py-1.5 rounded-md bg-emerald-500/10 border border-emerald-500/20">
-              <span className="relative flex h-2 w-2">
-                <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75"></span>
-                <span className="relative inline-flex rounded-full h-2 w-2 bg-emerald-500"></span>
-              </span>
-              <span className="text-[10px] text-emerald-500 font-medium">LIVE</span>
+            <div className="flex items-center gap-2 px-2 py-1">
+              <div className="flex items-center gap-2 px-2 py-1 rounded-md bg-emerald-500/10 border border-emerald-500/20">
+                <span className="relative flex h-2 w-2">
+                  <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75"></span>
+                  <span className="relative inline-flex rounded-full h-2 w-2 bg-emerald-500"></span>
+                </span>
+                <span className="text-[10px] text-emerald-500 font-medium">LIVE</span>
+              </div>
+              <p className="text-xs text-muted-foreground">
+                {t('riskManagement.last_updated', 'Last updated')}: <span className="font-mono">{new Date().toLocaleTimeString()}</span>
+              </p>
             </div>
           </div>
           <NotificationsPopover apiData={riskSummary} displayedLogsCount={displayedLogsCount} />

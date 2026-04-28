@@ -14,26 +14,39 @@ class SimulationTopology:
     """Topology dependencies and financial impact helpers."""
 
     # ------------------------------------------------------------------
-    # Stealth financial impact
+    # Financial impact (all attack types)
     # ------------------------------------------------------------------
-    async def _apply_stealth_financial_impact(self):
-        """Add financial exposure for each active stealth attack."""
-        for eq_id, attack_data in self.active_attacks.items():
-            if attack_data["type"] == "Stealth":
-                impact = SIMULATION_ATTACKS["Stealth"]["financial_impact_per_tick"]
-                self.financial_exposure += impact
-                attack_data["financial_impact_total"] += impact
+    FINANCIAL_PER_TICK: dict[str, float] = {
+        "Stealth": SIMULATION_ATTACKS["Stealth"]["financial_impact_per_tick"],  # $50k
+        "DDoS": 25000,  # downtime cost
+        "Ransomware": 60000,  # recovery cost (elevated — ransomware causes major business disruption)
+    }
 
-                db = SessionLocal()
-                try:
-                    risk = db.query(models.RiskAssessment).filter(
-                        models.RiskAssessment.id == attack_data["risk_id"]
-                    ).first()
-                    if risk:
-                        risk.financial_impact = attack_data["financial_impact_total"]
-                        db.commit()
-                finally:
-                    db.close()
+    async def _apply_financial_impact(self):
+        """Add financial exposure for each active attack (all types)."""
+        for eq_id, attack_data in self.active_attacks.items():
+            attack_type = attack_data["type"]
+            impact = self.FINANCIAL_PER_TICK.get(attack_type, 0)
+            if impact == 0:
+                continue
+            self.financial_exposure += impact
+            attack_data["financial_impact_total"] += impact
+
+            # Track cumulative financial exposure by type (doesn't reset on fix)
+            self.cumulative_financial_by_type[attack_type] = (
+                self.cumulative_financial_by_type.get(attack_type, 0) + impact
+            )
+
+            db = SessionLocal()
+            try:
+                risk = db.query(models.RiskAssessment).filter(
+                    models.RiskAssessment.id == attack_data["risk_id"]
+                ).first()
+                if risk:
+                    risk.financial_impact = attack_data["financial_impact_total"]
+                    db.commit()
+            finally:
+                db.close()
 
     # ------------------------------------------------------------------
     # Topology dependencies

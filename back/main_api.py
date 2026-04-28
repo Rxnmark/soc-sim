@@ -45,6 +45,17 @@ def setup_risk_summary(app: FastAPI):
         mitigated_risks = db.query(models.BusinessRisk).filter(models.BusinessRisk.status == "Mitigated").count()
         mitigation_rate = int((mitigated_risks / total_business_risks) * 100) if total_business_risks > 0 else 0
         financial_exposure = simulation_manager.financial_exposure if simulation_manager.is_running else 0.0
+        
+        # Cumulative financial exposure by attack type (historical, not reset on fix)
+        cumulative_financial_by_type: dict[str, float] = {}
+        if simulation_manager.is_running:
+            cumulative_financial_by_type = dict(simulation_manager.cumulative_financial_by_type)
+
+        # Attack counts by type (from attack_history — total attacks spawned, not just active)
+        attack_type_counts: dict[str, int] = {}
+        if simulation_manager.is_running:
+            attack_type_counts = dict(simulation_manager.attack_history)
+        
         return {
             "critical_threats": critical_threats,
             "high_risks": high_risks,
@@ -52,6 +63,8 @@ def setup_risk_summary(app: FastAPI):
             "sensors_offline": sensors_offline,
             "financial_exposure": f"${financial_exposure / 1000000:.2f}M" if financial_exposure >= 1000000 else f"${financial_exposure:,.0f}",
             "financial_exposure_numeric": financial_exposure,
+            "cumulative_financial_by_type": cumulative_financial_by_type,
+            "attack_type_counts": attack_type_counts,
             "total_risks": total_business_risks,
             "mitigation_rate": mitigation_rate,
         }
@@ -112,9 +125,10 @@ def setup_threats(app: FastAPI):
         return threats
 
     @app.post("/api/v1/threats/simulate")
-    def simulate_threat(db: Session = Depends(get_db)):
+    async def simulate_threat(db: Session = Depends(get_db)):
         """Endpoint to manually trigger a new threat for testing."""
-        return generate_random_threat(db)
+        await simulation_manager._spawn_attack()
+        return {"status": "success", "message": "Manual attack spawned"}
     return read_threats, simulate_threat
 
 # --- 4. LOGS ---

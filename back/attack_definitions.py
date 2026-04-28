@@ -24,7 +24,7 @@ SIMULATION_ATTACKS = {
             "Hidden malware communication channel detected on {target_name}.",
         ],
         "effect": "stealth",
-        "financial_impact_per_tick": 50000,
+        "financial_impact_per_tick": 20000,
         "auto_cleanup_seconds": 60,
     },
     "Ransomware": {

@@ -46,8 +46,6 @@ export const CYBER_NAV_ITEMS: Array<{ translationKey: string; href: string; icon
 
 export const RISK_NAV_ITEMS: Array<{ translationKey: string; href: string; icon: React.ComponentType<{ className?: string }> }> = [
   { translationKey: "riskManagement.sidebarTitle", href: "/", icon: LayoutDashboard },
-  { translationKey: "sidebar.projects", href: "/projects", icon: Briefcase },
   { translationKey: "sidebar.analytics", href: "/analytics", icon: BarChart3 },
   { translationKey: "sidebar.reports", href: "/reports", icon: FileText },
-  { translationKey: "sidebar.team", href: "/team", icon: Users },
 ];

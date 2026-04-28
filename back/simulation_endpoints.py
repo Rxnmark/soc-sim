@@ -65,6 +65,33 @@ def register_simulation_routes(app):
         simulation_manager.stop()
         return {"status": "stopped"}
 
+    @app.post("/api/v1/simulation/pause")
+    async def _pause_simulation():
+        simulation_manager.is_paused = True
+        return {"status": "paused"}
+
+    @app.post("/api/v1/simulation/resume")
+    async def _resume_simulation():
+        simulation_manager.is_paused = False
+        return {"status": "resumed"}
+
+    @app.post("/api/v1/simulation/speed")
+    async def _set_speed(request: dict):
+        speed_multiplier = request.get("speed_multiplier", 1.0)
+        simulation_manager.speed_multiplier = float(speed_multiplier)
+        return {"status": "ok", "speed_multiplier": simulation_manager.speed_multiplier}
+
+    @app.post("/api/v1/simulation/clear-ghosts")
+    async def clear_ghosts(db: Session = Depends(get_db)):
+        """Failsafe to clear stale active_attacks and logs if the system desyncs."""
+        simulation_manager.active_attacks.clear()
+        db.query(models.RiskAssessment).filter(
+            models.RiskAssessment.is_resolved == False
+        ).update({"is_resolved": True})
+        db.commit()
+        await security_logs_collection.delete_many({})
+        return {"status": "ghosts_cleared"}
+
     # ------------------------------------------------------------------
     # Auto-fix endpoints
     # ------------------------------------------------------------------

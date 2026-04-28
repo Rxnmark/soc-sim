@@ -22,6 +22,7 @@ export const ukCore = {
     financial_exposure: "Фінансові ризики",
     total_risks: "Всього ризиків",
     mitigation_rate: "Рівень усунення",
+    export_reports: "Експорт звітів",
     requires_attention: "Потребує уваги",
     scheduled_patching: "Заплановано оновлення",
     maintenance_mode: "Режим обслуговування",
@@ -34,6 +35,7 @@ export const ukCore = {
   },
   assets: {
     title: "Реєстр захисту активів",
+    subtitle: "Мережеві пристрої та інфраструктура",
     search_placeholder: "Пошук за IP, назвою або типом...",
     status_online: "В мережі",
     status_offline: "Офлайн",
@@ -70,7 +72,7 @@ export const ukCore = {
   },
   threatStats: {
     title: "Історія загроз",
-    subtitle: "за останню добу",
+    subtitle: "Архів загроз за останню добу",
     warning_count: "Попередження",
     active_count: "Потребують уваги",
     critical_count: "Критичні",

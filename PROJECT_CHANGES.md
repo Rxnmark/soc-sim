@@ -2,6 +2,22 @@
 
 ## 🔧 Recent Changes
 
+### 2026-04-29: Business Analytics Dashboard — Financial Impact Metrics
+- **analytics.tsx** — повне перепрофілювання placeholder-сторінки: Business Analytics Dashboard з фінансовими метриками для 3 категорій ризиків (DDoS, Ransomware, Stealth). Картки з фінансовим впливом у USD (формат `Intl.NumberFormat`), графік за часовими інтервалами (auto-refresh 5 сек), підтягування даних з `/api/v1/risks/summary` (polling 10 сек).
+- **analytics-chart.tsx** — новий компонент Recharts LineChart для візуалізації фінансового впливу. Три лінії: DDoS (червона #ef4444), Ransomware (помаранчева #f97316), Stealth (фіолетова #a855f7). Live-точки кожні 5 сек.
+- **en-extended.ts** — додано `businessAnalytics` (title, subtitle, live, last_updated) та `financialStats` (ddos, ransomware, stealth, hourly_chart, currency) ключі.
+- **uk-extended.ts** — українські переклади для `businessAnalytics` та `financialStats`.
+- **PROJECT_MAP.md** — оновлено з новими файлами та описами.
+
+### 2026-04-28: Оновлення Export Report на Risk Management + Sim Control Panel
+- **export-modal.tsx** — повне перепирання: доданено `reportData` проп (apiData, unprocessedCount, mitigationRate, categoryChartData, financialImpactData, lastUpdated), `useTranslation()` для всього тексту, `RadioGroup` замість ToggleGroup для вибору JSON/CSV, `handleExport` з генерацією Blob/ObjectURL для завантаження, `isExporting` стан з спинером. Видалено DatePicker (експорт поточних даних).
+- **risk-management.tsx** — ExportModal тепер отримує `reportData` з реальними даними.
+- **en-extended.ts** / **uk-extended.ts** — `exportModal` з ключами: title, description, format, cancel, download, success, report_summary, matrix_data, threats_analysis, financial_impact.
+- **en-core.ts** / **uk-core.ts** — `dashboard.export_reports` переклад.
+- **sim-control-panel.tsx** — нова панель керування симуляцією (Popover): статус, telemetry (Backend Speed, Auto-Fix Speed, Active Attacks), Play/Pause/Resume/Stop, швидкість (1x/2x/4x/10x), New Threat / DB Reset, Auto-Neutralize AI з Ghost Sweeper failsafe.
+- **PROJECT_MAP.md** — оновлено з новою структурою та описами.
+- **PROJECT_CHANGES.md** — оновлено.
+
 ### 2026-04-27: Фікс `POST /api/v1/threats/archive-and-reboot` (ітерація 2) + фільтр Minor/Warning у `GET /api/v1/threats`
 - **Проблема #1:** `_block_equipment()` шукала обладнання за `request.source_ip`, але `source_ip` — це IP атакуючого, а не IP цілі. Через це обладнання не знаходилося.
 - **Проблема #2 (ітерація 1):** Перевірка `has_attacks` використовувала MongoDB logs, які ніколи не очищуються → `has_attacks` завжди `True` → перезавантаження не спрацьовувало.

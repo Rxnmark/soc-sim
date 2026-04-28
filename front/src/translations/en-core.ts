@@ -22,6 +22,7 @@ export const enCore = {
     financial_exposure: "Financial Exposure",
     total_risks: "Total Risks",
     mitigation_rate: "Mitigation Rate",
+    export_reports: "Export Reports",
     requires_attention: "Requires attention",
     scheduled_patching: "Scheduled for patching",
     maintenance_mode: "Maintenance mode",

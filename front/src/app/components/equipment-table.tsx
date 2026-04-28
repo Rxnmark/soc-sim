@@ -36,6 +36,10 @@ export function EquipmentTable({ filterIp, setFilterIp }: Props) {
       eq.ip_address.includes(searchQuery)
     )
     .sort((a, b) => {
+      // Rebooting always on top
+      if (a.status === "Rebooting" && b.status !== "Rebooting") return -1;
+      if (b.status === "Rebooting" && a.status !== "Rebooting") return 1;
+      // Then by risk level
       const riskOrder = { Critical: 4, High: 3, Medium: 2, Warning: 1, Safe: 0 };
       const aRisk = riskOrder[a.risk_level] || 0;
       const bRisk = riskOrder[b.risk_level] || 0;

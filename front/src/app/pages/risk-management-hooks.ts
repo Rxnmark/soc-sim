@@ -84,34 +84,64 @@ function classifyAttack(eventType: string): "ddos" | "ransomware" | "stealth" | 
   return "warning";
 }
 
-// Financial impact per attack type (estimated cost in USD)
-const FINANCIAL_IMPACT_PER_ATTACK: Record<string, number> = {
-  ddos: 75000,       // DDoS — equipment offline, downtime
-  ransomware: 50000, // Ransomware — data encryption, recovery
-  stealth: 25000,    // Stealth — data leak, investigation cost
+// Classify backend attack type names (DDoS, Ransomware, Stealth) into frontend categories
+function classifyAttackType(attackType: string): "ddos" | "ransomware" | "stealth" {
+  const lower = attackType.toLowerCase();
+  if (lower.includes("ddos")) return "ddos";
+  if (lower.includes("ransomware")) return "ransomware";
+  if (lower.includes("stealth")) return "stealth";
+  return "ddos"; // fallback
+}
+
+// Map backend attack types to display names
+const FINANCIAL_DISPLAY_NAMES: Record<string, string> = {
+  DDoS: "DDoS",
+  Ransomware: "Ransomware",
+  Stealth: "Stealth / APT",
 };
 
 export function useBusinessRisks() {
-  const [logs, setLogs] = useState<any[]>([]);
+  const [apiSummary, setApiSummary] = useState<any>(null);
+
+  const fetchSummary = async () => {
+    try {
+      const res = await fetch("http://127.0.0.1:8000/api/v1/risks/summary");
+      const data = await res.json();
+      setApiSummary(data);
+    } catch (error) {
+      console.error("Error fetching summary for charts:", error);
+    }
+  };
 
   useEffect(() => {
-    fetch("http://127.0.0.1:8000/api/v1/logs")
-      .then((res) => res.json())
-      .then((data) => setLogs(data))
-      .catch((err) => console.error("Error fetching logs:", err));
+    fetchSummary();
+    const interval = setInterval(fetchSummary, 5000);
+    return () => clearInterval(interval);
   }, []);
 
-  // Count attacks by type (exclude resolved + warnings)
+  // Financial exposure by attack type — cumulative (historical, doesn't reset on fix)
+  const byType = apiSummary?.cumulative_financial_by_type ?? {};
+
+  const financialImpactData = useMemo(() => {
+    return Object.entries(byType)
+      .map(([type, impact]) => ({
+        name: FINANCIAL_DISPLAY_NAMES[type] || type,
+        impact: Number(impact) || 0,
+      }))
+      .sort((a, b) => b.impact - a.impact);
+  }, [byType]);
+
+  // Attack counts by type for Donut chart — from attack_history (total spawned, not just active)
+  const attackTypeCounts = apiSummary?.attack_type_counts ?? {};
+
   const attackCounts = useMemo(() => {
     const counts: Record<string, number> = {};
-    logs.forEach((log) => {
-      const cat = classifyAttack(log.event_type);
-      if (cat !== "warning" && cat !== "resolved") {
-        counts[cat] = (counts[cat] || 0) + 1;
-      }
+    Object.entries(attackTypeCounts).forEach(([type, count]) => {
+      const cat = classifyAttackType(type);
+      counts[cat] = (counts[cat] || 0) + (Number(count) || 0);
     });
     return counts;
-  }, [logs]);
+  }, [attackTypeCounts]);
 
   const categoryChartData = useMemo(() => {
     const labels: Record<string, string> = { ddos: "DDoS", ransomware: "Ransomware", stealth: "Stealth / APT" };
@@ -119,15 +149,6 @@ export function useBusinessRisks() {
       name: labels[name] || name,
       value,
     }));
-  }, [attackCounts]);
-
-  const financialImpactData = useMemo(() => {
-    return Object.entries(attackCounts)
-      .map(([type, count]) => ({
-        name: type === "ddos" ? "DDoS" : type === "ransomware" ? "Ransomware" : "Stealth",
-        impact: count * FINANCIAL_IMPACT_PER_ATTACK[type],
-      }))
-      .sort((a, b) => b.impact - a.impact);
   }, [attackCounts]);
 
   return { risks: [], categoryChartData, financialImpactData };
