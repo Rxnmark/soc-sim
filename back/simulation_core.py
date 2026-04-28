@@ -45,9 +45,9 @@ class SimulationCore(SimulationTopology):
             if elapsed >= ESCALATION_PHASE_SECONDS and self.current_phase != "escalated":
                 self.current_phase = "escalated"
 
-            # --- Stealth financial exposure: +$50k every STEALTH_FINANCIAL_INTERVAL s ---
+            # --- Financial exposure for all active attacks ---
             if now - self._stealth_last_tick >= STEALTH_FINANCIAL_INTERVAL:
-                await self._apply_stealth_financial_impact()
+                await self._apply_financial_impact()
                 self._stealth_last_tick = now
 
             # --- Attack timer ---
@@ -124,6 +124,7 @@ class SimulationCore(SimulationTopology):
                     "description": description,
                     "source_ip": source_ip,
                     "target_ip": target.ip_address,
+                    "target_equipment_id": target.id,
                     "timestamp": timestamp,
                 })
                 print(f"[SIM] _spawn_attack: Minor attack logged with Warning risk: {attack_subtype} on {target.name}")
@@ -160,6 +161,7 @@ class SimulationCore(SimulationTopology):
                 "description": description,
                 "source_ip": source_ip,
                 "target_ip": target.ip_address,
+                "target_equipment_id": target.id,
                 "timestamp": timestamp,
             })
             print(f"[SIM] _spawn_attack: Log inserted into MongoDB")

@@ -60,6 +60,33 @@
 
 **Виправлення:** Додано видалення з `active_attacks` в `reboot_equipment()` та `_apply_auto_fix()` у `back/simulation_endpoints.py`. Також виправлено виклик `_update_topology_dependencies(db)` (замість `self.`).
 
+### 2026-04-28: Оновлення UI risk-management та cyber-assets сторінок
+- **risk-management.tsx**:
+  - Видалено refresh button (кнопка `<RefreshCw>`)
+  - LIVE + Last updated тепер у одному рядку, title відцентрований
+  - subtitle змінено на "Оцінка фінансового впливу ризиків"
+  - Переклад `riskManagement.last_updated` додано в uk-core.ts
+- **cyber-assets.tsx**:
+  - Видалено refresh button з хедера
+  - LIVE + Last updated у одному рядку, title відцентрований
+  - Додано `assets.subtitle` переклад: "Мережеві пристрої та інфраструктура" (uk) / "Network devices and infrastructure" (en)
+  - Додано `assets.title` переклад: "Реєстр захисту активів" (uk) / "Asset Protection Registry" (en)
+  - Додано `last_updated` переклад: "Останнє оновлення" (uk) / "Last updated:" (en)
+- **risk-matrix.tsx**:
+  - Виправлено структуру сітки: тепер сітка займає `flex-1`, IMPACT label розташований окремо під сіткою (`shrink-0`), щоб не накладався на сітку
+- **simulation_topology.py**:
+  - Збільшено фінансовий вплив ransomware: `FINANCIAL_PER_TICK["Ransomware"]` з 10000 до 80000 (на тик)
+  - Це робить колонку ransomware на чарті "Фінансовий вплив за типами" приблизно 1/3 від DDoS
+
+### 2026-04-28: Виправлення перезавантаження обладнання + видалення логу "Equipment Rebooted"
+- **Проблема:** `_block_equipment()` шукав обладнання за "найновішому unresolved ризику", а не за конкретний пристрій з картки загрози. При кількох активних загрозах перезавантажувався неправильний пристрій.
+- **Виправлення #1:** Додано `target_equipment_id: target.id` у MongoDB логи при створенні загроз (`simulation_core.py`).
+- **Виправлення #2:** `_block_equipment()` тепер використовує 3-рівневе знаходження: (1) `target_equipment_id` з запиту, (2) найновіший unresolved ризик, (3) пошук по `source_ip`.
+- **Виправлення #3:** `_block_equipment` зроблено асинхронним, виправлено виклики у `_apply_auto_fix` та `_archive_and_reboot`.
+- **Виправлення #4:** `FixRequest` schema отримала нове поле `target_equipment_id: int | None = None`.
+- **Виправлення #5:** Frontend (`expert-panel.tsx`) тепер передає `target_equipment_id` з логу при виклику `archive-and-reboot`.
+- **Виправлення #6:** Видалено лог "Equipment Rebooted" з `reboot_equipment()` — він більше не з'являтиметься в expert-panel.
+
 ### 2026-04-25: Equipment не відновлюється після паузи симуляції
 Після зупинки симуляції через відсутність доступного обладнання (`No available equipment`), при продовженні симуляції пристрої, атаковані DDoS/Minor атаками, не відновлювалися після ручного усунення загроз. Причиною був race condition: `_recovery_equipment()` перевіряв `equipment_id not in self.active_attacks`, але DDoS-атаки видалялися з `active_attacks` одразу після застосування ефекту. Також пристрої в "Rebooting" могли потрапити на нові атаки через `_get_available_equipment()`.
 

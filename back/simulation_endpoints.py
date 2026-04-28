@@ -69,6 +69,7 @@ def register_simulation_routes(app):
     # Auto-fix endpoints
     # ------------------------------------------------------------------
     async def reboot_equipment(equipment_id: int):
+        """Background task: wait for recovery time, then set equipment back to Online."""
         await asyncio.sleep(5)
         db = SessionLocal()
         try:
@@ -76,31 +77,50 @@ def register_simulation_routes(app):
             if eq:
                 eq.status = "Online"
                 db.commit()
-
-                # Remove from active_attacks if present so the device can be attacked again
                 if equipment_id in simulation_manager.active_attacks:
                     del simulation_manager.active_attacks[equipment_id]
-
                 await simulation_manager._update_topology_dependencies(db)
         finally:
             db.close()
 
-    def _block_equipment(request: FixRequest, db: Session, background_tasks: BackgroundTasks):
-        """Block a source IP and reboot the corresponding equipment. Returns (equipment, target_name)."""
-        # Find equipment by unresolved risk_assessment (most recent attack target)
-        # source_ip is the attacker's IP, not the target equipment's IP
-        active_risk = db.query(models.RiskAssessment).filter(
-            models.RiskAssessment.is_resolved == False
-        ).order_by(models.RiskAssessment.created_at.desc()).first()
+    async def _block_equipment(request: FixRequest, db: Session, background_tasks: BackgroundTasks):
+        """Block a source IP and reboot the corresponding equipment. Returns (equipment, target_name).
+        
+        Uses target_equipment_id from request if provided, otherwise falls back to 
+        finding the most recent unresolved risk_assessment.
+        """
         equipment = None
-        if active_risk:
+        target_name = "зовнiшнього атакуючого"
+        
+        # Priority 1: Use target_equipment_id from request (explicit target from frontend)
+        target_id = getattr(request, 'target_equipment_id', None)
+        if target_id:
             equipment = db.query(models.Equipment).filter(
-                models.Equipment.id == active_risk.equipment_id
+                models.Equipment.id == target_id
             ).first()
+        
+        # Priority 2: Find equipment by the most recent unresolved risk_assessment
+        if not equipment:
+            active_risk = db.query(models.RiskAssessment).filter(
+                models.RiskAssessment.is_resolved == False
+            ).order_by(models.RiskAssessment.created_at.desc()).first()
+            if active_risk:
+                equipment = db.query(models.Equipment).filter(
+                    models.Equipment.id == active_risk.equipment_id
+                ).first()
+        
+        # Priority 3: Find by source_ip matching equipment IP
+        if not equipment:
+            equipment = db.query(models.Equipment).filter(
+                models.Equipment.ip_address == request.source_ip
+            ).first()
+        
         if equipment:
+            # Remove from active_attacks so device can be attacked again
             if equipment.id in simulation_manager.active_attacks:
                 del simulation_manager.active_attacks[equipment.id]
             equipment.status = "Rebooting"
+            # Resolve all unresolved risks for this equipment
             db.query(models.RiskAssessment).filter(
                 models.RiskAssessment.equipment_id == equipment.id,
                 models.RiskAssessment.is_resolved == False
@@ -108,13 +128,11 @@ def register_simulation_routes(app):
             db.commit()
             target_name = f"внутрiшнього пристрою {equipment.name}"
             background_tasks.add_task(reboot_equipment, equipment.id)
-        else:
-            target_name = "зовнiшнього атакуючого"
         return equipment, target_name
 
     @app.post("/api/v1/actions/block")
     async def _apply_auto_fix(request: FixRequest, background_tasks: BackgroundTasks, db: Session = Depends(get_db)):
-        equipment, target_name = _block_equipment(request, db, background_tasks)
+        equipment, target_name = await _block_equipment(request, db, background_tasks)
         await security_logs_collection.insert_one({
             "event_type": "Auto-Fix Applied",
             "description": f"Система заблокувала доступ для {target_name} (IP: {request.source_ip}).",
@@ -125,13 +143,16 @@ def register_simulation_routes(app):
 
     @app.post("/api/v1/threats/archive-and-reboot")
     async def _archive_and_reboot(request: FixRequest, background_tasks: BackgroundTasks, db: Session = Depends(get_db)):
-        """Archive threat, block IP, then check for remaining attacks. If none, reboot all unsafe equipment."""
+        """Archive threat, block source IP, reboot targeted equipment, then check for remaining attacks.
+        
+        If no remaining attacks, reboot ALL unsafe equipment (including cascade-damaged devices).
+        """
         # 1. Archive the threat
         from main_routes import archive_threat
         await archive_threat(request, db)
 
-        # 2. Block the equipment
-        equipment, target_name = _block_equipment(request, db, background_tasks)
+        # 2. Block and reboot the targeted equipment
+        equipment, target_name = await _block_equipment(request, db, background_tasks)
         await security_logs_collection.insert_one({
             "event_type": "Auto-Fix Applied",
             "description": f"Система заблокувала доступ для {target_name} (IP: {request.source_ip}).",
@@ -162,7 +183,7 @@ def register_simulation_routes(app):
                 background_tasks.add_task(reboot_equipment, eq.id)
                 await security_logs_collection.insert_one({
                     "event_type": "Auto-Fix Applied",
-                    "description": f"Автоматичне перезавантаження обладнання {eq.name} (усі загрози усунуто).",
+                    "description": f"Автоматичне перезавантаження обладнання {eq.name} (усi загрози усунуто).",
                     "source_ip": eq.ip_address,
                     "timestamp": datetime.now(LOCAL_TZ),
                 })

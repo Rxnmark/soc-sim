@@ -17,6 +17,7 @@ interface SecurityLog {
   description: string;
   source_ip: string;
   target_ip?: string;
+  target_equipment_id?: number;
   timestamp: string;
 }
 
@@ -64,7 +65,14 @@ export function ExpertPanel({ filterIp }: Props) {
   const handleArchiveThreat = async (log: SecurityLog) => {
     setArchivingId(log._id);
     try {
-      await fetch("http://127.0.0.1:8000/api/v1/threats/archive-and-reboot", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ source_ip: log.source_ip }) });
+      await fetch("http://127.0.0.1:8000/api/v1/threats/archive-and-reboot", { 
+        method: "POST", 
+        headers: { "Content-Type": "application/json" }, 
+        body: JSON.stringify({ 
+          source_ip: log.source_ip,
+          target_equipment_id: log.target_equipment_id || undefined 
+        }) 
+      });
       setLogs(prev => prev.filter(l => l._id !== log._id));
       setArchivedThreats(prev => new Set(prev).add(log.source_ip));
     } catch (error) { console.error("Error archiving threat:", error); }

@@ -21,6 +21,7 @@ class SecurityLog(BaseModel):
 
 class FixRequest(BaseModel):
     source_ip: str
+    target_equipment_id: int | None = None
 
 class SimulationStatus(BaseModel):
     is_running: bool
