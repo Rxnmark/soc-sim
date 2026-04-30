@@ -1,4 +1,5 @@
 import { useState, useEffect, useRef, useCallback } from "react";
+import authenticatedFetch from "../utils/api-fetch";
 import { Cpu, Play, Pause, Square, Zap, Shield } from "lucide-react";
 import { Popover, PopoverContent, PopoverTrigger } from "@radix-ui/react-popover";
 import { Switch } from "@radix-ui/react-switch";
@@ -12,7 +13,8 @@ const speedOptions = [
   { label: "10x", val: 0.1 },
 ];
 
-const API = (import.meta as any).env?.VITE_API_URL || "http://localhost:8000";
+// API base path is now handled by authenticatedFetch relative to proxy
+const API = "/api/v1";
 
 function speedMultiplierToHuman(multiplier: number | undefined): string {
   if (multiplier === undefined) return "1x";
@@ -37,7 +39,7 @@ export function SimControlPanel() {
 
   const refresh = useCallback(async () => {
     try {
-      const res = await fetch(`${API}/api/v1/simulation/status`);
+      const res = await authenticatedFetch(`${API}/simulation/status`);
       const data = await res.json();
       setStatus(data);
       setBackendStatus(data);
@@ -56,7 +58,7 @@ export function SimControlPanel() {
   useEffect(() => {
     const id = setInterval(async () => {
       try {
-        const res = await fetch(`${API}/api/v1/simulation/status`);
+        const res = await authenticatedFetch(`${API}/simulation/status`);
         const data = await res.json();
         setBackendStatus(data);
       } catch { /* ignore */ }
@@ -71,27 +73,34 @@ export function SimControlPanel() {
 
     const interval = setInterval(async () => {
       try {
-        // Step 1: Check if system is completely safe
-        const eqRes = await fetch(`${API}/api/v1/equipment`);
-        const eqData: any[] = await eqRes.json();
-        const allSafe = eqData.every((eq: any) => eq.status === "Online");
+        // Step 1: Auto-Neutralize active threats first
+        const archivedRes = await authenticatedFetch(`${API}/threats/archived`);
+        const archivedData = await archivedRes.json();
+        const archivedArray = Array.isArray(archivedData) ? archivedData : [];
+        const archivedSet = new Set(archivedArray.map((a: any) => String(a.source_ip)));
 
-        if (allSafe) {
-          // Ghost Sweeper: clear stale states
-          await fetch(`${API}/api/v1/simulation/clear-ghosts`, { method: "POST" });
-          toast.success("Ghost Sweeper: stale states cleared");
-          refresh();
-          return;
-        }
+        const logsRes = await authenticatedFetch(`${API}/logs`);
+        const logsData = await logsRes.json();
+        const logs: any[] = Array.isArray(logsData) ? logsData : [];
+        
+        const eqRes = await authenticatedFetch(`${API}/equipment`);
+        const eqDataRaw = await eqRes.json();
+        const eqData: any[] = Array.isArray(eqDataRaw) ? eqDataRaw : [];
 
-        // Step 2: System not fully safe — proceed with normal auto-neutralize
-        const logsRes = await fetch(`${API}/api/v1/logs`);
-        const logs: any[] = await logsRes.json();
-        const active = logs.find(
-          (l) => !isResolvedThreat(l.event_type) && !isMinorEventType(l.event_type)
-        );
+        const active = logs.find((l) => {
+          if (!l) return false;
+          if (isResolvedThreat(l.event_type) || isMinorEventType(l.event_type) || archivedSet.has(String(l.source_ip))) return false;
+          if (l.target_equipment_id) {
+            const eq = eqData.find((e: any) => e.id === l.target_equipment_id);
+            if (eq && (eq.status === "Online" || eq.status === "Rebooting") && eq.risk_level === "Safe") {
+              return false;
+            }
+          }
+          return true;
+        });
+
         if (active) {
-          await fetch(`${API}/api/v1/threats/archive-and-reboot`, {
+          await authenticatedFetch(`${API}/threats/archive-and-reboot`, {
             method: "POST",
             headers: { "Content-Type": "application/json" },
             body: JSON.stringify({
@@ -101,6 +110,19 @@ export function SimControlPanel() {
           });
           toast.success("Auto-Neutralize: Threat eliminated");
           refresh();
+          return;
+        }
+
+        // Step 2: Ghost Sweeper (failsafe if system is fully safe but there are stuck active attacks on backend)
+        const allSafe = eqData.every((eq: any) => eq.status === "Online");
+
+        if (allSafe && eqData.length > 0) {
+          const res = await authenticatedFetch(`${API}/simulation/status`);
+          const status = await res.json();
+          // Only sweep ghosts if there are no active threats left but active_attacks_count > 0 or something stuck
+          // Actually, just call clear-ghosts if all safe and no active logs to process
+          await authenticatedFetch(`${API}/simulation/clear-ghosts`, { method: "POST" });
+          refresh();
         }
       } catch { /* ignore */ }
     }, autoFixInterval * 1000);
@@ -109,24 +131,24 @@ export function SimControlPanel() {
   }, [autoFixEnabled, refresh, autoFixInterval]);
 
   const start = async () => {
-    await fetch(`${API}/api/v1/simulation/start`, { method: "POST" });
+    await authenticatedFetch(`${API}/simulation/start`, { method: "POST" });
     refresh();
   };
   const stop = async () => {
-    await fetch(`${API}/api/v1/simulation/stop`, { method: "POST" });
+    await authenticatedFetch(`${API}/simulation/stop`, { method: "POST" });
     refresh();
   };
   const pause = async () => {
-    await fetch(`${API}/api/v1/simulation/pause`, { method: "POST" });
+    await authenticatedFetch(`${API}/simulation/pause`, { method: "POST" });
     refresh();
   };
   const resume = async () => {
-    await fetch(`${API}/api/v1/simulation/resume`, { method: "POST" });
+    await authenticatedFetch(`${API}/simulation/resume`, { method: "POST" });
     refresh();
   };
   const setSpeed = async (val: number) => {
     setActiveSpeed(val);
-    await fetch(`${API}/api/v1/simulation/speed`, {
+    await authenticatedFetch(`${API}/simulation/speed`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ speed_multiplier: val }),
@@ -135,11 +157,11 @@ export function SimControlPanel() {
     refresh();
   };
   const simulateThreat = async () => {
-    await fetch(`${API}/api/v1/threats/simulate`, { method: "POST" });
+    await authenticatedFetch(`${API}/threats/simulate`, { method: "POST" });
     refresh();
   };
   const resetDb = async () => {
-    await fetch(`${API}/api/v1/reset`, { method: "POST" });
+    await authenticatedFetch(`${API}/reset`, { method: "POST" });
     refresh();
   };
 

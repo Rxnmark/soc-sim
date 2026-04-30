@@ -2,6 +2,40 @@
 
 ## 🔧 Recent Changes
 
+### 2026-04-29: CI/CD Pipeline та Database Backup Scripts
+- **`.github/workflows/ci.yml`** — **НОВИЙ** GitHub Actions workflow: Python 3.11, кешування pip, запуск `pytest -v --tb=short` з `working-directory: back`. Працює на push/PR до `main`. Тести використовують SQLite in-memory + AsyncMock (без зовнішніх сервісів).
+- **`back/backup.sh`** — **НОВИЙ** Bash скрипт для бекапу PostgreSQL та MongoDB з Docker контейнерів. Читає credentials з `.env`, використовує `PGPASSWORD` для PostgreSQL, підтримує cron job setup.
+- **`back/backup.ps1`** — **НОВИЙ** PowerShell скрипт (Windows еквівалент `backup.sh`). Перевіряє доступність контейнерів Docker перед бекапом, використовує `PGPASSWORD` для PostgreSQL.
+- **`back/.env`** — **НОВИЙ** credentials file: PostgreSQL (admin/170273 → expert_system), MongoDB (admin/170273 → expert_telemetry).
+- **`.gitignore`** — оновлено: додано `back/.env` та `back/backups/` для виключення з версійного контролю.
+- **`back/backups/.gitkeep`** — **НОВИЙ** для збереження директорії бекапів у git.
+- Виправлено `backup.ps1` та `backup.sh` — `pg_dump` тепер використовує `env PGPASSWORD=$PGPassword` (раніше пароль не передавався, бекап не працював).
+- Додано перевірку контейнерів Docker у `backup.ps1` — вихід з помилкою, якщо контейнери не запущені.
+- Верифікація: pytest пройшов (19 passed, 1.05s).
+
+### 2026-04-29: Впровадження JWT + 2FA Автентифікації та RBAC
+- **front/src/vite.config.js** — додано конфігурацію проксі (`/api/v1` -> `http://localhost:8000`). Це виправило помилку "Network error" при логіні, оскільки раніше фронтенд намагався робити запити на порт Vite (5173).
+- **back/main.py** — додано `Base.metadata.create_all(bind=engine)` для автоматичного створення таблиць (зокрема нової таблиці `users`) при запуску. Видалено дублювання реєстрації маршрутів.
+- **back/auth_utils.py** — змінено алгоритм хешування з `bcrypt` на `argon2`. Це вирішило критичну помилку `ValueError: password cannot be longer than 72 bytes`, яка виникала в бібліотеці `passlib` при ініціалізації bcrypt на Windows/Python 3.11.
+- **back/main_api.py** — впроваджено Role-Based Access Control (RBAC). Всі маршрути тепер захищені через `Depends(require_role(...))`:
+    - **CEO**: Повний доступ до всього.
+    - **CISO**: Тільки Cyber Defense (обладнання, загрози, симуляція).
+    - **PM**: Тільки Risk Management (звіти, бізнес-ризики).
+- **front/src/app/pages/...** — оновлено `risk-management-hooks.ts`, `cybersecurity.tsx`, `equipment-table.tsx` та `expert-panel.tsx`: тепер вони використовують `authenticatedFetch` (додає Bearer токен) та відносні шляхи замість абсолютних `http://127.0.0.1:8000`.
+- **Database Seeding** — успішно виконано початковий посів користувачів: `ceo`, `ciso`, `pm` (пароль: `password123`).
+
+
+### 2026-04-29: Виправлення синхронізації UI з бекендом (Швидкість, NotificationsPopover, Auto-Neutralize)
+- **schemas.py** — додано поля `speed_multiplier` (float) та `is_paused` (bool) у схему `SimulationStatus`. Це виправило баг, коли зміна швидкості на UI не відображалася як оновлена з бекенду (завжди показувало 1x), бо FastAPI обрізав ці поля при відповіді.
+- **sim-control-panel.tsx** — виправлено баг `Auto-Neutralize`, який зациклювався на старих загрозах і не міг очистити нові. Тепер скрипт спочатку завантажує список архівованих загроз (`/api/v1/threats/archived`) і фільтрує лог, ігноруючи вже оброблені загрози та ті, чиє обладнання вже має статус Safe.
+- **expert-panel.tsx** — панель тепер кожні 5 сек завантажує стан обладнання (`/api/v1/equipment`). Якщо загроза націлена на обладнання, яке вже має статуси "Online/Rebooting" та "Safe", картка автоматично приховується. Це запобігає зависанню карток, коли загроза була усунена іншим шляхом (наприклад, через авто-відновлення чи Ghost Sweeper).
+- **notifications-popover.tsx** — дзвіночок сповіщень більше не спирається на локальний підрахунок логів (який відставав від бази), а використовує прямі дані `apiData` (critical_threats, high_risks, sensors_offline), завжди показуючи абсолютно точну кількість актуальних проблем.
+
+### 2026-04-29: Виправлення зависання при скиданні БД та багу самоочищення
+- **back/simulation_endpoints.py** — видалено `await security_logs_collection.delete_many({})` з `clear_ghosts`. Ghost Sweeper більше не видаляє історію логів з MongoDB, усуваючи ефект "самочинного скидання" бази даних при досягненні безпечного стану.
+- **back/main_reset.py** — змінено логіку `/api/v1/reset`. Замість `drop_all` (який викликав deadlock через ексклюзивне блокування таблиць, коли фонові задачі автореагування тримали активні транзакції) тепер використовується безпечне очищення рядків через `db.query(...).delete()`. Додано `simulation_manager.stop()` перед очищенням бази для запобігання новим фоновим запитам.
+
+
 ### 2026-04-29: Business Analytics Dashboard — Financial Impact Metrics
 - **analytics.tsx** — повне перепрофілювання placeholder-сторінки: Business Analytics Dashboard з фінансовими метриками для 3 категорій ризиків (DDoS, Ransomware, Stealth). Картки з фінансовим впливом у USD (формат `Intl.NumberFormat`), графік за часовими інтервалами (auto-refresh 5 сек), підтягування даних з `/api/v1/risks/summary` (polling 10 сек).
 - **analytics-chart.tsx** — новий компонент Recharts LineChart для візуалізації фінансового впливу. Три лінії: DDoS (червона #ef4444), Ransomware (помаранчева #f97316), Stealth (фіолетова #a855f7). Live-точки кожні 5 сек.
@@ -64,6 +98,13 @@
 - displayedLogsCount у NotificationsPopover фільтрує: `!isResolvedThreat(log.event_type) && !archivedThreats.has(log.source_ip)`.
 - NotificationsPopover приймає опційний проп `displayedLogsCount` — якщо не передано, використовує стару логіку (сума карток).
 - Escalation видалено з UI (користувач вирішив, що він зайвий).
+
+### 2026-04-29: Реалізація сторінки "Звіти" (Reports Dashboard)
+- **reports-db.ts** — новий файл: IndexedDB wrapper для збереження `FileSystemDirectoryHandle` (без зовнішніх залежностей). Функції: `saveDirectoryHandle`, `getDirectoryHandle`, `deleteDirectoryHandle`.
+- **reports.tsx** — повне перероблення: замінено Drag & Drop на `window.showDirectoryPicker()` (вибір каталогу), IndexedDB-персистентність (при поверненні на сторінку автоматичне відновлення доступу до каталогу), side-by-side лейаут (50/50: календар + панель), кнопки "Select Folder" і "Refresh Data". Кнопка Select Folder використовує variant="default" (always primary color).
+- **reports-panel.tsx** — видалено `Sheet` обгортку, замінено на звичайний `div` контейнер. Додано `RiskMatrix` (з `../components/risk-matrix`). Адаптивний лейаут: `h-full flex flex-col`, графіки з `flex-1 min-h-0`. Кольори синхронізовані: DDoS=#ef4444, Ransomware=#f97316, Stealth=#a855f7. Сітка 2x2 для графіків. Усі тексти перекладені через `useTranslation()`.
+- **reports-calendar.tsx** — додано `isLoading` проп. Skeleton-завантаження (35 пульсуючих div) при `isLoading`. Motion-анімація: каскадна поява днів з `delay: index * 0.02`. Locale залежить від мови (uk/en через `date-fns/locale`).
+- **uk-core.ts** / **en-core.ts** — додано ключі `reports.select_folder`, `reports.refresh_data`, `reports.loading`, `reports.report_for_date`.
 
 ## 🐛 Known Issues & Fixes
 

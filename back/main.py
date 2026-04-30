@@ -1,10 +1,17 @@
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
+from database import engine, Base
+import models
 from simulation_endpoints import register_simulation_routes
 from debug_simulation import router as debug_router
 from main_api import register_all_routes
+from prometheus_fastapi_instrumentator import Instrumentator
+
+# Create database tables if they don't exist
+Base.metadata.create_all(bind=engine)
 
 app = FastAPI()
+
 
 app.add_middleware(
     CORSMiddleware,
@@ -15,6 +22,7 @@ app.add_middleware(
 )
 
 # Register all API routes
-register_simulation_routes(app)
-app.include_router(debug_router)
 register_all_routes(app)
+
+# Prometheus metrics — exposes GET /metrics
+Instrumentator().instrument(app).expose(app)

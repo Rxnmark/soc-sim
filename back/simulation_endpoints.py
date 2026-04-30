@@ -5,14 +5,15 @@ Imported by main.py to keep files under 250 lines.
 import asyncio
 from datetime import datetime, timezone, timedelta
 
-# Use Europe/Kiev timezone (UTC+3)
-LOCAL_TZ = timezone(timedelta(hours=3))
 from fastapi import Depends, Query, BackgroundTasks
 from sqlalchemy.orm import Session
 from database import SessionLocal, security_logs_collection, get_db
 import models
 from schemas import SimulationStatus, FixRequest
 from simulation import SimulationManager
+
+# Use Europe/Kiev timezone (UTC+3)
+LOCAL_TZ = timezone(timedelta(hours=3))
 
 simulation_manager = SimulationManager()
 
@@ -36,12 +37,15 @@ def _is_high_or_critical(event_type: str) -> bool:
 # ------------------------------------------------------------------
 # Simulation game endpoints
 # ------------------------------------------------------------------
-def register_simulation_routes(app):
-    @app.get("/api/v1/simulation/status", response_model=SimulationStatus)
+def register_simulation_routes(app, dependencies=None):
+    if dependencies is None:
+        dependencies = []
+
+    @app.get("/api/v1/simulation/status", response_model=SimulationStatus, dependencies=dependencies)
     def _get_simulation_status():
         return simulation_manager.get_status()
 
-    @app.post("/api/v1/simulation/fix")
+    @app.post("/api/v1/simulation/fix", dependencies=dependencies)
     async def _apply_simulation_fix(equipment_id: int = Query(..., alias="equipment_id"), db: Session = Depends(get_db)):
         result = await simulation_manager.apply_fix(equipment_id)
         if result["status"] == "success":
@@ -55,41 +59,40 @@ def register_simulation_routes(app):
                 })
         return result
 
-    @app.post("/api/v1/simulation/start")
+    @app.post("/api/v1/simulation/start", dependencies=dependencies)
     async def _start_simulation():
         await simulation_manager.start()
         return {"status": "started"}
 
-    @app.post("/api/v1/simulation/stop")
+    @app.post("/api/v1/simulation/stop", dependencies=dependencies)
     async def _stop_simulation():
         simulation_manager.stop()
         return {"status": "stopped"}
 
-    @app.post("/api/v1/simulation/pause")
+    @app.post("/api/v1/simulation/pause", dependencies=dependencies)
     async def _pause_simulation():
         simulation_manager.is_paused = True
         return {"status": "paused"}
 
-    @app.post("/api/v1/simulation/resume")
+    @app.post("/api/v1/simulation/resume", dependencies=dependencies)
     async def _resume_simulation():
         simulation_manager.is_paused = False
         return {"status": "resumed"}
 
-    @app.post("/api/v1/simulation/speed")
+    @app.post("/api/v1/simulation/speed", dependencies=dependencies)
     async def _set_speed(request: dict):
         speed_multiplier = request.get("speed_multiplier", 1.0)
         simulation_manager.speed_multiplier = float(speed_multiplier)
         return {"status": "ok", "speed_multiplier": simulation_manager.speed_multiplier}
 
-    @app.post("/api/v1/simulation/clear-ghosts")
+    @app.post("/api/v1/simulation/clear-ghosts", dependencies=dependencies)
     async def clear_ghosts(db: Session = Depends(get_db)):
-        """Failsafe to clear stale active_attacks and logs if the system desyncs."""
+        """Failsafe to clear stale active_attacks if the system desyncs."""
         simulation_manager.active_attacks.clear()
         db.query(models.RiskAssessment).filter(
             models.RiskAssessment.is_resolved == False
         ).update({"is_resolved": True})
         db.commit()
-        await security_logs_collection.delete_many({})
         return {"status": "ghosts_cleared"}
 
     # ------------------------------------------------------------------
@@ -157,7 +160,7 @@ def register_simulation_routes(app):
             background_tasks.add_task(reboot_equipment, equipment.id)
         return equipment, target_name
 
-    @app.post("/api/v1/actions/block")
+    @app.post("/api/v1/actions/block", dependencies=dependencies)
     async def _apply_auto_fix(request: FixRequest, background_tasks: BackgroundTasks, db: Session = Depends(get_db)):
         equipment, target_name = await _block_equipment(request, db, background_tasks)
         await security_logs_collection.insert_one({
@@ -166,9 +169,11 @@ def register_simulation_routes(app):
             "source_ip": request.source_ip,
             "timestamp": datetime.now(LOCAL_TZ)
         })
+        from main_routes import archive_threat
+        await archive_threat(request, db)
         return {"status": "success"}
 
-    @app.post("/api/v1/threats/archive-and-reboot")
+    @app.post("/api/v1/threats/archive-and-reboot", dependencies=dependencies)
     async def _archive_and_reboot(request: FixRequest, background_tasks: BackgroundTasks, db: Session = Depends(get_db)):
         """Archive threat, block source IP, reboot targeted equipment, then check for remaining attacks.
         
@@ -200,6 +205,10 @@ def register_simulation_routes(app):
             ).all()
             for eq in unsafe_equipment:
                 if eq.id in simulation_manager.active_attacks:
+                    attack_data = simulation_manager.active_attacks[eq.id]
+                    from main_routes import archive_threat
+                    archive_req = FixRequest(source_ip=attack_data["source_ip"], target_equipment_id=eq.id)
+                    await archive_threat(archive_req, db)
                     del simulation_manager.active_attacks[eq.id]
                 eq.status = "Rebooting"
                 db.query(models.RiskAssessment).filter(

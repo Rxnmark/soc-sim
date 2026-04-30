@@ -1,4 +1,5 @@
 import { useEffect, useState, useMemo } from "react";
+import authenticatedFetch from "../utils/api-fetch";
 import { Sidebar } from "../components/sidebar-nav";
 import { EquipmentTable } from "../components/equipment-table";
 import { ExpertPanel } from "../components/expert-panel";
@@ -16,24 +17,25 @@ export default function CybersecurityDashboard() {
   const [archivedThreats, setArchivedThreats] = useState<Set<string>>(new Set());
 
   const fetchSummary = () => {
-    fetch("http://127.0.0.1:8000/api/v1/risks/summary")
+    authenticatedFetch("/api/v1/risks/summary")
       .then((res) => res.json())
       .then((data) => setApiData(data))
       .catch((err) => console.error("Error fetching data:", err));
   };
 
   const fetchLogs = () => {
-    fetch("http://127.0.0.1:8000/api/v1/logs")
+    authenticatedFetch("/api/v1/logs")
       .then((res) => res.json())
-      .then((data) => setLogs(data))
+      .then((data) => setLogs(Array.isArray(data) ? data : []))
       .catch((err) => console.error("Error loading logs:", err));
   };
 
   const fetchArchived = async () => {
     try {
-      const res = await fetch("http://127.0.0.1:8000/api/v1/threats/archived");
+      const res = await authenticatedFetch("/api/v1/threats/archived");
       const data = await res.json();
-      setArchivedThreats(new Set<string>(data.map((a: any) => String(a.source_ip))));
+      const archivedArray = Array.isArray(data) ? data : [];
+      setArchivedThreats(new Set<string>(archivedArray.map((a: any) => String(a.source_ip))));
     } catch (err) {
       console.error("Error loading archived:", err);
     }
@@ -50,13 +52,13 @@ export default function CybersecurityDashboard() {
     } else {
       document.documentElement.classList.add("dark");
     }
-    
+
     fetchSummary();
     fetchLogs();
     fetchArchived();
-    const dataInterval = setInterval(fetchSummary, 5000);
-    const logInterval = setInterval(fetchLogs, 5000);
-    const archivedInterval = setInterval(fetchArchived, 5000);
+    const dataInterval = setInterval(fetchSummary, 2000);
+    const logInterval = setInterval(fetchLogs, 2000);
+    const archivedInterval = setInterval(fetchArchived, 2000);
     return () => {
       clearInterval(dataInterval);
       clearInterval(logInterval);
@@ -65,7 +67,8 @@ export default function CybersecurityDashboard() {
   }, []);
 
   const displayedLogsCount = useMemo(() => {
-    return logs.filter(log => !isResolvedThreat(log.event_type) && !archivedThreats.has(log.source_ip) && classifyThreat(log.event_type) !== "warning").length;
+    if (!Array.isArray(logs)) return 0;
+    return logs.filter(log => log && !isResolvedThreat(log.event_type) && !archivedThreats.has(log.source_ip) && classifyThreat(log.event_type) !== "warning").length;
   }, [logs, archivedThreats]);
 
   return (

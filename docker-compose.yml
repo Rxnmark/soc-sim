@@ -1,0 +1,106 @@
+version: '3.8'
+
+services:
+  # ── Databases ──
+  postgres:
+    image: postgres:15-alpine
+    container_name: expert_postgres
+    environment:
+      POSTGRES_USER: admin
+      POSTGRES_PASSWORD: 170273
+      POSTGRES_DB: expert_system
+    ports:
+      - "5432:5432"
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+    restart: unless-stopped
+    networks:
+      - soc-network
+
+  mongodb:
+    image: mongo:6.0
+    container_name: expert_mongodb
+    environment:
+      MONGO_INITDB_ROOT_USERNAME: admin
+      MONGO_INITDB_ROOT_PASSWORD: 170273
+    ports:
+      - "27017:27017"
+    volumes:
+      - mongodata:/data/db
+    restart: unless-stopped
+    networks:
+      - soc-network
+
+  # ── Backend (FastAPI) ──
+  backend:
+    build:
+      context: ./back
+      dockerfile: Dockerfile
+    container_name: expert_backend
+    environment:
+      POSTGRES_URL: "postgresql://admin:170273@postgres:5432/expert_system"
+      MONGO_URL: "mongodb://admin:170273@mongodb:27017"
+    ports:
+      - "8000:8000"
+    depends_on:
+      - postgres
+      - mongodb
+    restart: unless-stopped
+    networks:
+      - soc-network
+
+  # ── Frontend (Nginx + React) ──
+  frontend:
+    build:
+      context: ./front
+      dockerfile: Dockerfile
+    container_name: expert_frontend
+    ports:
+      - "80:80"
+    depends_on:
+      - backend
+    restart: unless-stopped
+    networks:
+      - soc-network
+
+  # ── Monitoring ──
+  prometheus:
+    image: prom/prometheus:v2.53.0
+    container_name: expert_prometheus
+    ports:
+      - "9090:9090"
+    volumes:
+      - ./back/monitoring/prometheus.yml:/etc/prometheus/prometheus.yml:ro
+      - prometheus_data:/prometheus
+    depends_on:
+      - backend
+    restart: unless-stopped
+    networks:
+      - soc-network
+
+  grafana:
+    image: grafana/grafana:11.1.0
+    container_name: expert_grafana
+    ports:
+      - "3000:3000"
+    environment:
+      GF_SECURITY_ADMIN_USER: admin
+      GF_SECURITY_ADMIN_PASSWORD: admin
+    volumes:
+      - grafana_data:/var/lib/grafana
+      - ./back/monitoring/grafana/provisioning:/etc/grafana/provisioning:ro
+    depends_on:
+      - prometheus
+    restart: unless-stopped
+    networks:
+      - soc-network
+
+volumes:
+  pgdata:
+  mongodata:
+  prometheus_data:
+  grafana_data:
+
+networks:
+  soc-network:
+    driver: bridge

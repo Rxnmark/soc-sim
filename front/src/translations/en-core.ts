@@ -35,6 +35,7 @@ export const enCore = {
   },
   assets: {
     title: "Asset Protection Registry",
+    subtitle: "Network devices and infrastructure",
     search_placeholder: "Search by IP, name or type...",
     status_online: "Online",
     status_offline: "Offline",
@@ -105,5 +106,24 @@ export const enCore = {
   analytics: {
     title: "Security Analytics",
     subtitle: "Security metrics and threat analytics",
+  },
+  reports: {
+    title: "Reports",
+    subtitle: "Analysis and visualization of cybersecurity reports",
+    select_folder: "Select Folder",
+    refresh_data: "Refresh Data",
+    no_data: "No data available. Select a folder to load reports.",
+    select_day: "Select a day",
+    current_month: "Current Month",
+    previous_month: "Previous Month",
+    next_month: "Next Month",
+    total_risks: "Total Risks",
+    critical_threats: "Critical Threats",
+    mitigation_rate: "Mitigation Rate",
+    financial_exposure: "Financial Exposure",
+    category_distribution: "Category Distribution",
+    financial_impact: "Financial Impact by Risk Type",
+    loading: "Loading...",
+    report_for_date: "Report for ",
   },
 };

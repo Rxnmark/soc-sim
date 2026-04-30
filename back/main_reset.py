@@ -1,15 +1,36 @@
 from fastapi import FastAPI, Depends
 from sqlalchemy.orm import Session
-from database import engine, Base, get_db, security_logs_collection
+from database import get_db, security_logs_collection
 from simulation_endpoints import simulation_manager
 import models
+import auth_utils
+
+# Default user seeds (username -> {role, password})
+DEFAULT_USERS = [
+    {"username": "ceo", "role": "CEO", "password": "password123"},
+    {"username": "ciso", "role": "CISO", "password": "password123"},
+    {"username": "pm", "role": "PM", "password": "password123"},
+]
 
 
-def setup_reset(app: FastAPI):
-    @app.post("/api/v1/reset")
+def setup_reset(app: FastAPI, dependencies=None):
+    if dependencies is None:
+        dependencies = []
+
+    @app.post("/api/v1/reset", dependencies=dependencies)
     async def reset_database(db: Session = Depends(get_db)):
-        Base.metadata.drop_all(bind=engine)
-        Base.metadata.create_all(bind=engine)
+        # Stop simulation to prevent background queries during reset
+        simulation_manager.stop()
+        
+        # Safely delete data instead of drop_all to avoid deadlocks with active sessions
+        db.query(models.RiskAssessment).delete()
+        db.query(models.ThreatArchive).delete()
+        db.query(models.BusinessRisk).delete()
+        db.query(models.Threat).delete()
+        # Avoid self-referencing foreign key errors by clearing parent_id first
+        db.query(models.Equipment).update({"parent_id": None})
+        db.query(models.Equipment).delete()
+        db.commit()
         equipment_data = [
             {"name": "Main Gateway Router", "type": "Network", "ip_address": "192.168.1.1", "status": "Online"},
             {"name": "Core Switch Alpha", "type": "Network", "ip_address": "192.168.1.2", "status": "Online"},
@@ -33,11 +54,25 @@ def setup_reset(app: FastAPI):
             {"name": "Guest WiFi Gateway", "type": "Network", "ip_address": "172.16.1.1", "status": "Online"},
         ]
         eq_objects = []
-        for eq in equipment_data:
+        for i, eq in enumerate(equipment_data, start=1):
+            eq["id"] = i
             new_eq = models.Equipment(**eq)
             db.add(new_eq)
             eq_objects.append(new_eq)
         db.commit()
+        
+        # Seed default users
+        db.query(models.User).delete()
+        for user_data in DEFAULT_USERS:
+            user = models.User(
+                username=user_data["username"],
+                password_hash=auth_utils.hash_password(user_data["password"]),
+                role=user_data["role"],
+                is_2fa_enabled=False
+            )
+            db.add(user)
+        db.commit()
+        
         await security_logs_collection.delete_many({})
         await simulation_manager.start()
         return {"message": "Database reset! Simulation game started. Attacks will begin shortly."}

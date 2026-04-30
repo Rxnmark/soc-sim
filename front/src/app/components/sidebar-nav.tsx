@@ -1,72 +1,115 @@
-import { useState, useEffect } from "react";
-import { Link, useLocation } from "react-router"; 
+import { useState, useEffect, useCallback } from "react";
+import { Link, useLocation, useNavigate } from "react-router";
 import { Settings, LogOut, ChevronDown, ChevronRight, Shield, Lock, Briefcase } from "lucide-react";
 import { Button } from "./ui/button";
 import { useTranslation } from "../../context/LanguageContext";
 import { USERS_DATA, type Role, type NavItem, CYBER_NAV_ITEMS, RISK_NAV_ITEMS } from "./sidebar-data";
 import { LoginModal } from "./login-modal";
 
+function decodeJwt(token: string): { sub?: string; role?: string; exp?: number } {
+  try {
+    const base64 = token.split(".")[1];
+    const json = atob(base64);
+    return JSON.parse(json);
+  } catch {
+    return {};
+  }
+}
+
 export function Sidebar() {
   const { t } = useTranslation();
-  const [role, setRole] = useState<Role>("CEO");
+  const [role, setRole] = useState<Role | null>(null);
+  const [username, setUsername] = useState<string>("");
   const [isLoginModalOpen, setIsLoginModalOpen] = useState(false);
   const [isCyberOpen, setIsCyberOpen] = useState(true);
   const [isRiskOpen, setIsRiskOpen] = useState(true);
-
+  const navigate = useNavigate();
   const location = useLocation();
   const currentPath = location.pathname;
 
+  // On mount, check for valid JWT token
   useEffect(() => {
-    const savedRole = localStorage.getItem("user-role") as Role;
-    if (savedRole) {
-      setRole(savedRole);
-    } else {
-      setTimeout(() => setIsLoginModalOpen(true), 500); 
+    const token = localStorage.getItem("auth-token");
+    if (token) {
+      const payload = decodeJwt(token);
+      if (payload.exp && payload.exp > Date.now() / 1000 && payload.role) {
+        setRole(payload.role as Role);
+        setUsername(payload.sub || "");
+        return;
+      }
     }
+    // No valid token — show login modal
+    setTimeout(() => setIsLoginModalOpen(true), 500);
   }, []);
 
-  const handleRoleChange = (newRole: Role) => {
-    setRole(newRole);
-    localStorage.setItem("user-role", newRole);
+  const handleLoginSuccess = useCallback((token: string, userRole: string, userName: string) => {
+    localStorage.setItem("auth-token", token);
+    setRole(userRole as Role);
+    setUsername(userName);
     setIsLoginModalOpen(false);
-    if (newRole === "PM") window.location.href = "/";
-    if (newRole === "CISO") window.location.href = "/cybersecurity";
-  };
+
+    // Redirect based on role
+    if (userRole === "PM") navigate("/");
+    else if (userRole === "CISO") navigate("/cybersecurity");
+    else navigate("/");
+  }, [navigate]);
+
+  const handleLogout = useCallback(() => {
+    localStorage.removeItem("auth-token");
+    setRole(null);
+    setUsername("");
+    navigate("/");
+  }, [navigate]);
 
   const canAccessCyber = role === "CEO" || role === "CISO";
   const canAccessRisk = role === "CEO" || role === "PM";
-  const currentUser = USERS_DATA[role];
+  const currentUser = role ? USERS_DATA[role] : null;
 
-  const cyberItems: Array<{ name: string; href: string; icon: React.ComponentType<{ className?: string }> }> = 
+  const cyberItems: Array<{ name: string; href: string; icon: React.ComponentType<{ className?: string }> }> =
     CYBER_NAV_ITEMS.map(item => ({ name: t(item.translationKey), href: item.href, icon: item.icon }));
-  const riskItems: Array<{ name: string; href: string; icon: React.ComponentType<{ className?: string }> }> = 
+  const riskItems: Array<{ name: string; href: string; icon: React.ComponentType<{ className?: string }> }> =
     RISK_NAV_ITEMS.map(item => ({ name: t(item.translationKey), href: item.href, icon: item.icon }));
 
   return (
     <>
       <div className="w-64 bg-card border-r border-border h-screen flex flex-col transition-colors z-10">
         <div className="p-4 border-b border-border">
-          <button 
-            onClick={() => setIsLoginModalOpen(true)}
-            className="w-full flex items-center justify-between p-2 rounded-lg hover:bg-muted/50 transition-colors group"
-          >
-            <div className="flex items-center gap-3">
-              <div className={`w-9 h-9 rounded-full flex items-center justify-center text-white font-bold shrink-0 ${currentUser.color}`}>
-                {currentUser.initial}
+          {currentUser ? (
+            <div className="space-y-2">
+              <div className="flex items-center gap-3 p-2 rounded-lg">
+                <div className={`w-9 h-9 rounded-full flex items-center justify-center text-white font-bold shrink-0 ${currentUser.color}`}>
+                  {currentUser.initial}
+                </div>
+                <div className="text-left min-w-0">
+                  <p className="text-sm font-semibold text-card-foreground leading-tight truncate">{currentUser.name}</p>
+                  <p className="text-xs text-muted-foreground font-medium truncate">{currentUser.title}</p>
+                </div>
               </div>
-              <div className="text-left">
-                <p className="text-sm font-semibold text-card-foreground leading-tight truncate">{currentUser.name}</p>
-                <p className="text-xs text-muted-foreground font-medium truncate">{currentUser.title}</p>
-              </div>
+              <Button
+                variant="ghost"
+                size="sm"
+                onClick={handleLogout}
+                className="w-full justify-start gap-2 text-muted-foreground hover:text-destructive hover:bg-destructive/10"
+              >
+                <LogOut className="w-3.5 h-3.5" />
+                <span className="text-xs">Logout</span>
+              </Button>
             </div>
-            <LogOut className="w-4 h-4 text-muted-foreground opacity-0 group-hover:opacity-100 transition-opacity" />
-          </button>
+          ) : (
+            <button
+              onClick={() => setIsLoginModalOpen(true)}
+              className="w-full flex items-center justify-center gap-2 p-2 rounded-lg hover:bg-muted/50 transition-colors text-muted-foreground text-sm"
+            >
+              <Shield className="w-4 h-4" />
+              Login
+            </button>
+          )}
         </div>
 
         <div className="flex-1 overflow-y-auto p-4 space-y-6 custom-scrollbar">
           {/* --- CYBER DEFENSE MODULE --- */}
           <div>
-            <button 
+            <button
               onClick={() => setIsCyberOpen(!isCyberOpen)}
               className="w-full flex items-center justify-between text-xs font-bold text-muted-foreground tracking-wider mb-2 px-2"
             >
@@ -76,7 +119,7 @@ export function Sidebar() {
               </div>
               {isCyberOpen ? <ChevronDown className="w-3.5 h-3.5" /> : <ChevronRight className="w-3.5 h-3.5" />}
             </button>
-           
+
             {isCyberOpen && (
               <div className="space-y-1">
                 {cyberItems.map((item: NavItem) => {
@@ -107,7 +150,7 @@ export function Sidebar() {
 
           {/* --- RISK & COMPLIANCE MODULE --- */}
           <div>
-            <button 
+            <button
               onClick={() => setIsRiskOpen(!isRiskOpen)}
               className="w-full flex items-center justify-between text-xs font-bold text-muted-foreground tracking-wider mb-2 px-2"
             >
@@ -117,7 +160,7 @@ export function Sidebar() {
               </div>
               {isRiskOpen ? <ChevronDown className="w-3.5 h-3.5" /> : <ChevronRight className="w-3.5 h-3.5" />}
             </button>
-           
+
             {isRiskOpen && (
               <div className="space-y-1">
                 {riskItems.map((item: NavItem) => {
@@ -155,7 +198,11 @@ export function Sidebar() {
         </div>
       </div>
 
-      <LoginModal role={role} isLoginModalOpen={isLoginModalOpen} setIsLoginModalOpen={setIsLoginModalOpen} handleRoleChange={handleRoleChange} />
+      <LoginModal
+        isOpen={isLoginModalOpen}
+        onClose={() => setIsLoginModalOpen(false)}
+        onLoginSuccess={handleLoginSuccess}
+      />
     </>
   );
 }

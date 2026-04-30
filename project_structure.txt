@@ -1,0 +1,145 @@
+📂 Project Structure:
+
+├── .clinerules
+│   ├── workflows
+│   │   └── WorkspaceWorkflows.md
+│   └── WorkspaceRules.md
+├── back
+│   ├── attack_definitions.py
+│   ├── database.py
+│   ├── debug_simulation.py
+│   ├── docker-compose.yml
+│   ├── main.py
+│   ├── main_api.py
+│   ├── main_reset.py
+│   ├── main_routes.py
+│   ├── models.py
+│   ├── requirements.txt
+│   ├── schemas.py
+│   ├── simulation.py
+│   ├── simulation_core.py
+│   ├── simulation_endpoints.py
+│   ├── simulation_helpers.py
+│   ├── simulation_topology.py
+│   ├── test_db.py
+│   └── threats.py
+├── front
+│   ├── src
+│   │   ├── app
+│   │   │   ├── components
+│   │   │   │   ├── figma
+│   │   │   │   │   └── ImageWithFallback.tsx
+│   │   │   │   ├── ui
+│   │   │   │   │   ├── accordion.tsx
+│   │   │   │   │   ├── alert-dialog.tsx
+│   │   │   │   │   ├── alert.tsx
+│   │   │   │   │   ├── aspect-ratio.tsx
+│   │   │   │   │   ├── avatar.tsx
+│   │   │   │   │   ├── badge.tsx
+│   │   │   │   │   ├── breadcrumb.tsx
+│   │   │   │   │   ├── button.tsx
+│   │   │   │   │   ├── calendar.tsx
+│   │   │   │   │   ├── card.tsx
+│   │   │   │   │   ├── carousel.tsx
+│   │   │   │   │   ├── chart.tsx
+│   │   │   │   │   ├── checkbox.tsx
+│   │   │   │   │   ├── collapsible.tsx
+│   │   │   │   │   ├── command.tsx
+│   │   │   │   │   ├── context-menu.tsx
+│   │   │   │   │   ├── dialog.tsx
+│   │   │   │   │   ├── drawer.tsx
+│   │   │   │   │   ├── dropdown-menu.tsx
+│   │   │   │   │   ├── form.tsx
+│   │   │   │   │   ├── hover-card.tsx
+│   │   │   │   │   ├── input-otp.tsx
+│   │   │   │   │   ├── input.tsx
+│   │   │   │   │   ├── label.tsx
+│   │   │   │   │   ├── menubar.tsx
+│   │   │   │   │   ├── navigation-menu.tsx
+│   │   │   │   │   ├── pagination.tsx
+│   │   │   │   │   ├── popover.tsx
+│   │   │   │   │   ├── progress.tsx
+│   │   │   │   │   ├── radio-group.tsx
+│   │   │   │   │   ├── resizable.tsx
+│   │   │   │   │   ├── scroll-area.tsx
+│   │   │   │   │   ├── select.tsx
+│   │   │   │   │   ├── separator.tsx
+│   │   │   │   │   ├── sheet.tsx
+│   │   │   │   │   ├── sidebar.tsx
+│   │   │   │   │   ├── skeleton.tsx
+│   │   │   │   │   ├── slider.tsx
+│   │   │   │   │   ├── sonner.tsx
+│   │   │   │   │   ├── switch.tsx
+│   │   │   │   │   ├── table.tsx
+│   │   │   │   │   ├── tabs.tsx
+│   │   │   │   │   ├── textarea.tsx
+│   │   │   │   │   ├── toggle-group.tsx
+│   │   │   │   │   ├── toggle.tsx
+│   │   │   │   │   ├── tooltip.tsx
+│   │   │   │   │   ├── use-mobile.ts
+│   │   │   │   │   └── utils.ts
+│   │   │   │   ├── critical-threats.tsx
+│   │   │   │   ├── equipment-table.tsx
+│   │   │   │   ├── expert-panel-detail.tsx
+│   │   │   │   ├── expert-panel.tsx
+│   │   │   │   ├── expert-utils.tsx
+│   │   │   │   ├── export-modal.tsx
+│   │   │   │   ├── login-modal.tsx
+│   │   │   │   ├── network-topology-map-layout.tsx
+│   │   │   │   ├── network-topology-map.tsx
+│   │   │   │   ├── notifications-popover.tsx
+│   │   │   │   ├── risk-matrix.tsx
+│   │   │   │   ├── sidebar-data.ts
+│   │   │   │   ├── sidebar-nav.tsx
+│   │   │   │   └── sim-control-panel.tsx
+│   │   │   ├── pages
+│   │   │   │   ├── analytics-chart.tsx
+│   │   │   │   ├── analytics.tsx
+│   │   │   │   ├── cyber-analytics-chart.tsx
+│   │   │   │   ├── cyber-analytics.tsx
+│   │   │   │   ├── cyber-assets.tsx
+│   │   │   │   ├── cyber-threats-components.tsx
+│   │   │   │   ├── cyber-threats.tsx
+│   │   │   │   ├── cybersecurity.tsx
+│   │   │   │   ├── not-found.tsx
+│   │   │   │   ├── placeholder.tsx
+│   │   │   │   ├── reports.tsx
+│   │   │   │   ├── risk-management-charts.tsx
+│   │   │   │   ├── risk-management-hooks.ts
+│   │   │   │   ├── risk-management.tsx
+│   │   │   │   └── settings.tsx
+│   │   │   ├── App.tsx
+│   │   │   └── routes.tsx
+│   │   ├── context
+│   │   │   └── LanguageContext.tsx
+│   │   ├── styles
+│   │   │   ├── fonts.css
+│   │   │   ├── index.css
+│   │   │   ├── tailwind.css
+│   │   │   └── theme.css
+│   │   ├── translations
+│   │   │   ├── en-core.ts
+│   │   │   ├── en-extended.ts
+│   │   │   ├── en-threats.ts
+│   │   │   ├── en.ts
+│   │   │   ├── uk-core.ts
+│   │   │   ├── uk-extended.ts
+│   │   │   ├── uk-threats.ts
+│   │   │   └── uk.ts
+│   │   ├── index.html
+│   │   ├── main.tsx
+│   │   ├── package-lock.json
+│   │   ├── package.json
+│   │   └── vite.config.js
+│   ├── project_structure.txt
+│   └── scan.py
+├── .gitignore
+├── count_lines.py
+├── debug.txt
+├── package-lock.json
+├── package.json
+├── PROJECT_CHANGES.md
+├── PROJECT_MAP.md
+├── project_structure.txt
+├── temp_runner.bat
+└── Звіт лаб.docx

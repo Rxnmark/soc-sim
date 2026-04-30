@@ -1,4 +1,5 @@
 import { useState, useEffect, useMemo } from "react";
+import authenticatedFetch from "../utils/api-fetch";
 import { Sidebar } from "../components/sidebar-nav";
 import { 
   Server, Search, Network, LayoutGrid 
@@ -44,9 +45,9 @@ export default function CyberAssetsPage() {
 
   const fetchAssets = async () => {
     try {
-      const res = await fetch("http://127.0.0.1:8000/api/v1/equipment");
+      const res = await authenticatedFetch("/api/v1/equipment");
       const data = await res.json();
-      setAssets(data);
+      setAssets(Array.isArray(data) ? data : []);
     } catch (error) {
       console.error("Error fetching assets:", error);
     } finally {
@@ -55,14 +56,14 @@ export default function CyberAssetsPage() {
   };
 
   const fetchLogs = () => {
-    fetch("http://127.0.0.1:8000/api/v1/logs")
+    authenticatedFetch("/api/v1/logs")
       .then((res) => res.json())
-      .then((data) => setAllLogs(data))
+      .then((data) => setAllLogs(Array.isArray(data) ? data : []))
       .catch((err) => console.error("Error loading logs:", err));
   };
 
   const fetchRiskSummary = () => {
-    fetch("http://127.0.0.1:8000/api/v1/risks/summary")
+    authenticatedFetch("/api/v1/risks/summary")
       .then((res) => res.json())
       .then((data) => setRiskSummary(data))
       .catch((err) => console.error("Error fetching risk summary:", err));
@@ -70,9 +71,10 @@ export default function CyberAssetsPage() {
 
   const fetchArchived = async () => {
     try {
-      const res = await fetch("http://127.0.0.1:8000/api/v1/threats/archived");
+      const res = await authenticatedFetch("/api/v1/threats/archived");
       const data = await res.json();
-      setArchivedThreats(new Set<string>(data.map((a: any) => String(a.source_ip))));
+      const archivedArray = Array.isArray(data) ? data : [];
+      setArchivedThreats(new Set<string>(archivedArray.map((a: any) => String(a.source_ip))));
     } catch (err) {
       console.error("Error loading archived:", err);
     }
@@ -95,14 +97,20 @@ export default function CyberAssetsPage() {
     };
   }, []);
 
-  const filteredAssets = assets.filter(a => 
-    a.name.toLowerCase().includes(searchQuery.toLowerCase()) || 
-    a.ip_address.includes(searchQuery) ||
-    a.type.toLowerCase().includes(searchQuery.toLowerCase())
-  );
+  const filteredAssets = useMemo(() => {
+    if (!Array.isArray(assets)) return [];
+    return assets.filter(a => 
+      a && (
+        a.name.toLowerCase().includes(searchQuery.toLowerCase()) || 
+        a.ip_address.includes(searchQuery) ||
+        a.type.toLowerCase().includes(searchQuery.toLowerCase())
+      )
+    );
+  }, [assets, searchQuery]);
 
   const displayedLogsCount = useMemo(() => {
-    return allLogs.filter(log => !isResolvedLog(log.event_type) && !archivedThreats.has(log.source_ip) && classifyThreat(log.event_type) !== "warning").length;
+    if (!Array.isArray(allLogs)) return 0;
+    return allLogs.filter(log => log && !isResolvedLog(log.event_type) && !archivedThreats.has(log.source_ip) && classifyThreat(log.event_type) !== "warning").length;
   }, [allLogs, archivedThreats]);
 
   return (
@@ -156,7 +164,7 @@ export default function CyberAssetsPage() {
                 value={searchQuery}
                 onChange={(e) => setSearchQuery(e.target.value)}
                 placeholder={t('assets.search_placeholder')}
-                className="pl-9 pr-4 py-2 rounded-lg bg-muted border border-border text-sm text-foreground focus:outline-none focus:ring-1 focus:ring-primary w-64"
+                className="pl-9 pr-4 py-2 rounded-lg bg-muted border border-border text-sm text-foreground focus:outline-none focus:ring-1 focus:ring-primary w-[300px]"
               />
             </div>
             <NotificationsPopover apiData={riskSummary} displayedLogsCount={displayedLogsCount} />

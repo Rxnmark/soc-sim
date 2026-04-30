@@ -59,3 +59,13 @@ class ThreatArchive(Base):
     severity = Column(String) # "Critical", "High", "Medium", "Low"
     category = Column(String) # "Warning", "Active", "Critical"
     archived_at = Column(DateTime, default=datetime.datetime.utcnow)
+
+# --- МОДЕЛЬ КОРИСТУВАЧА (АВТЕНТИФІКАЦІЯ JWT + 2FA) ---
+class User(Base):
+    __tablename__ = "users"
+    id = Column(Integer, primary_key=True, index=True)
+    username = Column(String, unique=True, index=True)
+    password_hash = Column(String)
+    role = Column(String) # CEO, CISO, PM
+    totp_secret = Column(String, nullable=True)
+    is_2fa_enabled = Column(Boolean, default=False)

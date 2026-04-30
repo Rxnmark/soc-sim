@@ -1,0 +1,22 @@
+# Production runtime dependencies for SOC Simulator backend
+# Minimal set extracted from requirements.txt — excludes dev/test tools
+
+fastapi==0.135.1
+uvicorn==0.42.0
+sqlalchemy==2.0.48
+psycopg2-binary==2.9.11
+motor==3.7.1
+pymongo==4.16.0
+dnspython==2.8.0
+pydantic==2.12.5
+pydantic_core==2.41.5
+starlette==0.52.1
+httptools==0.6.0
+python-multipart==0.0.9
+passlib[bcrypt]==1.7.4
+pyotp==2.9.0
+PyJWT==2.8.0
+python-docx==1.2.0
+prometheus-client==0.21.1
+prometheus-fastapi-instrumentator==7.0.2
+python-dateutil==2.9.0.post0

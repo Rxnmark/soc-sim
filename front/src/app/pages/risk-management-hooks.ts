@@ -1,4 +1,5 @@
 import { useState, useEffect, useMemo } from "react";
+import authenticatedFetch from "../utils/api-fetch";
 import { isResolvedThreat, isMinorEventType } from "../components/expert-utils";
 
 export function useRiskData() {
@@ -11,7 +12,7 @@ export function useRiskData() {
   const fetchSummary = async (isManual = false) => {
     if (isManual) setIsRefreshing(true);
     try {
-      const response = await fetch("http://127.0.0.1:8000/api/v1/risks/summary");
+      const response = await authenticatedFetch("/api/v1/risks/summary");
       const data = await response.json();
       setApiData(data);
       setLastUpdated(new Date());
@@ -24,9 +25,9 @@ export function useRiskData() {
 
   const fetchLogs = async () => {
     try {
-      const res = await fetch("http://127.0.0.1:8000/api/v1/logs");
+      const res = await authenticatedFetch("/api/v1/logs");
       const data = await res.json();
-      setLogs(data);
+      setLogs(Array.isArray(data) ? data : []);
     } catch (error) {
       console.error("Error fetching logs:", error);
     }
@@ -34,9 +35,10 @@ export function useRiskData() {
 
   const fetchArchived = async () => {
     try {
-      const res = await fetch("http://127.0.0.1:8000/api/v1/threats/archived");
+      const res = await authenticatedFetch("/api/v1/threats/archived");
       const data = await res.json();
-      setArchivedThreats(new Set<string>(data.map((a: any) => String(a.source_ip))));
+      const archivedArray = Array.isArray(data) ? data : [];
+      setArchivedThreats(new Set<string>(archivedArray.map((a: any) => String(a.source_ip))));
     } catch (error) {
       console.error("Error fetching archived:", error);
     }
@@ -55,8 +57,10 @@ export function useRiskData() {
   }, []);
 
   const unprocessedCount = useMemo(() => {
+    if (!Array.isArray(logs)) return 0;
     return logs.filter(
       (log) =>
+        log &&
         !isResolvedThreat(log.event_type) &&
         !isMinorEventType(log.event_type) &&
         !archivedThreats.has(log.source_ip)
@@ -105,7 +109,7 @@ export function useBusinessRisks() {
 
   const fetchSummary = async () => {
     try {
-      const res = await fetch("http://127.0.0.1:8000/api/v1/risks/summary");
+      const res = await authenticatedFetch("/api/v1/risks/summary");
       const data = await res.json();
       setApiSummary(data);
     } catch (error) {

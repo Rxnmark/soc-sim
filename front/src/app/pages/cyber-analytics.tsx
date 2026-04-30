@@ -1,4 +1,5 @@
 import { useEffect, useState, useMemo } from "react";
+import authenticatedFetch from "../utils/api-fetch";
 import { Sidebar } from "../components/sidebar-nav";
 import { Card } from "../components/ui/card";
 import { useTranslation } from "../../context/LanguageContext";
@@ -31,7 +32,7 @@ export default function CyberAnalyticsPage() {
   // Fallback: if Set is not available, use plain object
 
   const fetchStatistics = () => {
-    fetch("http://127.0.0.1:8000/api/v1/threats/statistics")
+    authenticatedFetch("/api/v1/threats/statistics")
       .then((res) => res.json())
       .then((data) => {
         setStatistics(data);
@@ -41,14 +42,14 @@ export default function CyberAnalyticsPage() {
   };
 
   const fetchLogs = () => {
-    fetch("http://127.0.0.1:8000/api/v1/logs")
+    authenticatedFetch("/api/v1/logs")
       .then((res) => res.json())
-      .then((data) => setAllLogs(data))
+      .then((data) => setAllLogs(Array.isArray(data) ? data : []))
       .catch((err) => console.error("Error loading logs:", err));
   };
 
   const fetchRiskSummary = () => {
-    fetch("http://127.0.0.1:8000/api/v1/risks/summary")
+    authenticatedFetch("/api/v1/risks/summary")
       .then((res) => res.json())
       .then((data) => setRiskSummary(data))
       .catch((err) => console.error("Error fetching risk summary:", err));
@@ -56,9 +57,10 @@ export default function CyberAnalyticsPage() {
 
   const fetchArchived = async () => {
     try {
-      const res = await fetch("http://127.0.0.1:8000/api/v1/threats/archived");
+      const res = await authenticatedFetch("/api/v1/threats/archived");
       const data = await res.json();
-      setArchivedThreats(new Set<string>(data.map((a: any) => String(a.source_ip))));
+      const archivedArray = Array.isArray(data) ? data : [];
+      setArchivedThreats(new Set<string>(archivedArray.map((a: any) => String(a.source_ip))));
     } catch (err) {
       console.error("Error loading archived:", err);
     }
@@ -82,19 +84,26 @@ export default function CyberAnalyticsPage() {
   }, []);
 
   // Separate logs by category using unified classifyThreat function
-  const warningLogs = useMemo(() =>
-    allLogs.filter(log => classifyThreat(log.event_type) === "warning" && !isResolvedThreat(log.event_type)), [allLogs]
-  );
-  const activeLogs = useMemo(() =>
-    allLogs.filter(log => classifyThreat(log.event_type) === "active" && !isResolvedThreat(log.event_type)), [allLogs]
-  );
-  const criticalLogs = useMemo(() =>
-    allLogs.filter(log => classifyThreat(log.event_type) === "critical" && !isResolvedThreat(log.event_type)), [allLogs]
-  );
+  const warningLogs = useMemo(() => {
+    if (!Array.isArray(allLogs)) return [];
+    return allLogs.filter(log => log && classifyThreat(log.event_type) === "warning" && !isResolvedThreat(log.event_type));
+  }, [allLogs]);
+
+  const activeLogs = useMemo(() => {
+    if (!Array.isArray(allLogs)) return [];
+    return allLogs.filter(log => log && classifyThreat(log.event_type) === "active" && !isResolvedThreat(log.event_type));
+  }, [allLogs]);
+
+  const criticalLogs = useMemo(() => {
+    if (!Array.isArray(allLogs)) return [];
+    return allLogs.filter(log => log && classifyThreat(log.event_type) === "critical" && !isResolvedThreat(log.event_type));
+  }, [allLogs]);
 
   // Total count for bell badge - match cybersecurity.tsx logic exactly
   const displayedLogsCount = useMemo(() => {
+    if (!Array.isArray(allLogs)) return 0;
     return allLogs.filter(log =>
+      log &&
       !isResolvedThreat(log.event_type) &&
       !archivedThreats.has(log.source_ip) &&
       classifyThreat(log.event_type) !== "warning"
@@ -104,6 +113,7 @@ export default function CyberAnalyticsPage() {
   // Build base chart data from allLogs using unified classification (matches cards exactly)
   // Backend stores timestamps in UTC — convert to local Europe/Kiev (UTC+3) for display
   useEffect(() => {
+    if (!Array.isArray(allLogs)) return;
     const localHourNow = (new Date().getUTCHours() + 3) % 24;
     const hourlyWarning = new Array(24).fill(0);
     const hourlyActive = new Array(24).fill(0);

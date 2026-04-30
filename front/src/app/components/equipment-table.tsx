@@ -1,4 +1,5 @@
 import { useEffect, useState } from "react";
+import authenticatedFetch from "../utils/api-fetch";
 import { Server, ShieldAlert, CheckCircle2, XCircle, RefreshCw, Filter, Search, Lock, WifiOff } from "lucide-react";
 import { useTranslation } from "../../context/LanguageContext";
 
@@ -14,7 +15,7 @@ export function EquipmentTable({ filterIp, setFilterIp }: Props) {
   const [searchQuery, setSearchQuery] = useState("");
 
   const fetchEquipment = () => {
-    fetch("http://127.0.0.1:8000/api/v1/equipment")
+    authenticatedFetch("/api/v1/equipment")
       .then((res) => res.json())
       .then((data) => {
         setEquipmentList(data);

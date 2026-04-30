@@ -1,4 +1,5 @@
 import { useEffect, useState, useMemo } from "react";
+import authenticatedFetch from "../utils/api-fetch";
 import { Sidebar } from "../components/sidebar-nav";
 import { Card } from "../components/ui/card";
 import { useTranslation } from "../../context/LanguageContext";
@@ -31,7 +32,7 @@ export default function AnalyticsPage() {
   };
 
   const fetchRiskSummary = () => {
-    fetch("http://127.0.0.1:8000/api/v1/risks/summary")
+    authenticatedFetch("/api/v1/risks/summary")
       .then((res) => res.json())
       .then((data) => {
         setRiskSummary(data);
@@ -41,9 +42,9 @@ export default function AnalyticsPage() {
   };
 
   const fetchLogs = () => {
-    fetch("http://127.0.0.1:8000/api/v1/logs")
+    authenticatedFetch("/api/v1/logs")
       .then((res) => res.json())
-      .then((data) => setAllLogs(data))
+      .then((data) => setAllLogs(Array.isArray(data) ? data : []))
       .catch((err) => console.error("Error loading logs:", err));
   };
 
@@ -74,7 +75,7 @@ export default function AnalyticsPage() {
   // Build base chart data from allLogs using financial impact distribution
   // Backend stores timestamps in UTC — convert to local Europe/Kiev (UTC+3) for display
   useEffect(() => {
-    if (!riskSummary || allLogs.length === 0) return;
+    if (!riskSummary || !Array.isArray(allLogs) || allLogs.length === 0) return;
 
     const localHourNow = (new Date().getUTCHours() + 3) % 24;
     const hourlyDdos = new Array(24).fill(0);

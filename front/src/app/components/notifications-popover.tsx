@@ -60,7 +60,7 @@ export function NotificationsPopover({ apiData, displayedLogsCount }: { apiData:
   }
 
   // Total count for badge
-  const totalAlerts = displayedLogsCount !== undefined ? displayedLogsCount : activeAlerts.reduce((sum, alert) => sum + alert.count, 0);
+  const totalAlerts = activeAlerts.reduce((sum, alert) => sum + alert.count, 0);
 
   const markAllAsRead = () => {
     setDismissed(["critical", "high", "offline"]);

@@ -14,10 +14,12 @@ from main_routes import get_threat_statistics, archive_threat, get_archived_thre
 from main_reset import setup_reset
 from simulation_endpoints import register_simulation_routes, simulation_manager
 from debug_simulation import router as debug_router
+from auth_routes import router as auth_router
+from auth_utils import require_role
 
 # --- 1. RISK SUMMARY ---
 def setup_risk_summary(app: FastAPI):
-    @app.get("/api/v1/risks/summary")
+    @app.get("/api/v1/risks/summary", dependencies=[Depends(require_role(["CEO", "PM"]))])
     def get_risk_summary(db: Session = Depends(get_db)):
         sensors_offline = db.query(models.Equipment).filter(models.Equipment.status != "Online").count()
         # Рахуємо обладнання за найвищим ризиком (як в таблиці)
@@ -72,14 +74,14 @@ def setup_risk_summary(app: FastAPI):
 
 # --- 2. BUSINESS RISKS ---
 def setup_business_risks(app: FastAPI):
-    @app.get("/api/v1/business-risks")
+    @app.get("/api/v1/business-risks", dependencies=[Depends(require_role(["CEO", "PM"]))])
     def get_business_risks(db: Session = Depends(get_db)):
         return db.query(models.BusinessRisk).all()
     return get_business_risks
 
 # --- 3. EQUIPMENT ---
 def setup_equipment(app: FastAPI):
-    @app.get("/api/v1/equipment")
+    @app.get("/api/v1/equipment", dependencies=[Depends(require_role(["CEO", "CISO"]))])
     def get_all_equipment(db: Session = Depends(get_db)):
         equipments = db.query(models.Equipment).all()
         result = []
@@ -112,7 +114,7 @@ def setup_equipment(app: FastAPI):
     return get_all_equipment
 
 def setup_threats(app: FastAPI):
-    @app.get("/api/v1/threats", response_model=list[ThreatResponse])
+    @app.get("/api/v1/threats", response_model=list[ThreatResponse], dependencies=[Depends(require_role(["CEO", "CISO"]))])
     def read_threats(db: Session = Depends(get_db)):
         threats = db.query(models.Threat).filter(
             models.Threat.category.notin_(["Minor", "Warning"])
@@ -124,7 +126,7 @@ def setup_threats(app: FastAPI):
             ).order_by(models.Threat.timestamp.desc()).all()
         return threats
 
-    @app.post("/api/v1/threats/simulate")
+    @app.post("/api/v1/threats/simulate", dependencies=[Depends(require_role(["CEO", "CISO"]))])
     async def simulate_threat(db: Session = Depends(get_db)):
         """Endpoint to manually trigger a new threat for testing."""
         await simulation_manager._spawn_attack()
@@ -133,7 +135,7 @@ def setup_threats(app: FastAPI):
 
 # --- 4. LOGS ---
 def setup_logs(app: FastAPI):
-    @app.post("/api/v1/logs")
+    @app.post("/api/v1/logs", dependencies=[Depends(require_role(["CEO", "CISO", "PM"]))])
     async def create_security_log(log: SecurityLog, db: Session = Depends(get_db)):
         log_doc = log.model_dump()
         log_doc["timestamp"] = datetime.now(LOCAL_TZ)
@@ -151,7 +153,7 @@ def setup_logs(app: FastAPI):
                     db.commit()
         return {"message": "Log saved", "id": str(result.inserted_id)}
 
-    @app.get("/api/v1/logs")
+    @app.get("/api/v1/logs", dependencies=[Depends(require_role(["CEO", "CISO", "PM"]))])
     async def get_security_logs(limit: int = 1000):
         now = datetime.now(LOCAL_TZ)
         start_of_day = now.replace(hour=0, minute=0, second=0, microsecond=0)
@@ -170,25 +172,41 @@ def setup_logs(app: FastAPI):
 
 # --- 5. THREAT STATISTICS & ARCHIVE ---
 def setup_threat_stats(app: FastAPI):
-    @app.get("/api/v1/threats/statistics")
+    @app.get("/api/v1/threats/statistics", dependencies=[Depends(require_role(["CEO", "CISO", "PM"]))])
     async def get_threat_statistics_endpoint():
         return await get_threat_statistics()
 
-    @app.post("/api/v1/threats/archive")
+    @app.post("/api/v1/threats/archive", dependencies=[Depends(require_role(["CEO", "CISO"]))])
     async def archive_threat_endpoint(request: FixRequest, db: Session = Depends(get_db)):
         return await archive_threat(request, db)
 
-    @app.get("/api/v1/threats/archived")
+    @app.get("/api/v1/threats/archived", dependencies=[Depends(require_role(["CEO", "CISO", "PM"]))])
     def get_archived_threats_endpoint(limit: int = 100, db: Session = Depends(get_db)):
         return get_archived_threats(limit, db)
     return get_threat_statistics_endpoint, archive_threat_endpoint, get_archived_threats_endpoint
 
 def register_all_routes(app: FastAPI):
     """Register all API routes on the app."""
+    # Auth routes (public - no RBAC)
+    app.include_router(auth_router)
+    
+    # Risk Management routes (CEO + PM)
     setup_risk_summary(app)
     setup_business_risks(app)
+    
+    # Cyber Defense routes (CEO + CISO)
     setup_equipment(app)
     setup_threats(app)
+    
+    # Shared routes (CEO + CISO + PM)
     setup_logs(app)
     setup_threat_stats(app)
+    
+    # Simulation routes (CEO + CISO only)
+    register_simulation_routes(app, dependencies=[Depends(require_role(["CEO", "CISO"]))])
+    
+    # Reset (CEO + CISO) - Public for initial seeding in this simulator
     setup_reset(app)
+
+    # Debug router (CEO only)
+    app.include_router(debug_router, prefix="/api/v1/debug", tags=["debug"], dependencies=[Depends(require_role(["CEO"]))])

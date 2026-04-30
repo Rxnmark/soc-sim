@@ -1,4 +1,5 @@
 import { useEffect, useState, useMemo } from "react";
+import authenticatedFetch from "../utils/api-fetch";
 import { Terminal, Clock, ShieldAlert } from "lucide-react";
 import { Button } from "./ui/button";
 import { Badge } from "./ui/badge";
@@ -32,46 +33,80 @@ export function ExpertPanel({ filterIp }: Props) {
   const [archivingId, setArchivingId] = useState<string | null>(null);
 
   const fetchLogs = () => {
-    fetch("http://127.0.0.1:8000/api/v1/logs")
+    authenticatedFetch("/api/v1/logs")
       .then((res) => res.json())
-      .then((data) => { setLogs(data); setLoading(false); })
+      .then((data) => { setLogs(Array.isArray(data) ? data : []); setLoading(false); })
       .catch((err) => console.error("Error loading logs:", err));
   };
 
   const fetchArchived = async () => {
     try {
-      const res = await fetch("http://127.0.0.1:8000/api/v1/threats/archived");
+      const res = await authenticatedFetch("/api/v1/threats/archived");
       const data = await res.json();
-      setArchivedThreats(new Set<string>(data.map((a: any) => String(a.source_ip))));
+      const archivedArray = Array.isArray(data) ? data : [];
+      setArchivedThreats(new Set<string>(archivedArray.map((a: any) => String(a.source_ip))));
     } catch (err) {
       console.error("Error loading archived:", err);
     }
   };
 
+  const [equipmentMap, setEquipmentMap] = useState<Map<number, any>>(new Map());
+
+  const fetchEquipment = async () => {
+    try {
+      const res = await authenticatedFetch("/api/v1/equipment");
+      const data = await res.json();
+      const map = new Map();
+      if (Array.isArray(data)) {
+        data.forEach((eq: any) => map.set(eq.id, eq));
+      }
+      setEquipmentMap(map);
+    } catch (err) {
+      console.error("Error loading equipment:", err);
+    }
+  };
+
   useEffect(() => {
-    fetchLogs(); fetchArchived();
-    const interval = setInterval(() => { fetchLogs(); fetchArchived(); }, 5000);
+    fetchLogs(); fetchArchived(); fetchEquipment();
+    const interval = setInterval(() => { fetchLogs(); fetchArchived(); fetchEquipment(); }, 2000);
     return () => clearInterval(interval);
   }, []);
 
   useEffect(() => { setFixMessage(null); }, [selectedLog?._id]);
 
   const displayedLogs = useMemo(() => {
-    let filtered = filterIp ? logs.filter(log => log.source_ip === filterIp) : logs;
-    filtered = filtered.filter(log => !isResolvedThreat(log.event_type) && !isMinorEventType(log.event_type) && !archivedThreats.has(log.source_ip));
+    if (!Array.isArray(logs)) return [];
+    let filtered = filterIp ? logs.filter(log => log && log.source_ip === filterIp) : logs;
+    filtered = filtered.filter(log => {
+      if (!log) return false;
+      // Hide naturally resolved or minor events, and explicitly archived IPs
+      if (isResolvedThreat(log.event_type) || isMinorEventType(log.event_type) || archivedThreats.has(log.source_ip)) {
+        return false;
+      }
+
+      // Dynamic hide: if we know the equipment is already Safe (from an external fix or Ghost Sweeper), hide the old log
+      if (log.target_equipment_id) {
+        const eq = equipmentMap.get(log.target_equipment_id);
+        // If equipment is "Online" or "Rebooting" and has no active critical/high risks (Safe), we shouldn't show active attacks for it
+        if (eq && (eq.status === "Online" || eq.status === "Rebooting") && eq.risk_level === "Safe") {
+          return false;
+        }
+      }
+      return true;
+    });
     return filtered.sort((a, b) => getCriticalityRank(a.event_type) - getCriticalityRank(b.event_type));
-  }, [logs, filterIp, archivedThreats]);
+  }, [logs, filterIp, archivedThreats, equipmentMap]);
 
   const handleArchiveThreat = async (log: SecurityLog) => {
     setArchivingId(log._id);
     try {
-      await fetch("http://127.0.0.1:8000/api/v1/threats/archive-and-reboot", { 
-        method: "POST", 
-        headers: { "Content-Type": "application/json" }, 
-        body: JSON.stringify({ 
+      await authenticatedFetch("/api/v1/threats/archive-and-reboot", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
           source_ip: log.source_ip,
-          target_equipment_id: log.target_equipment_id || undefined 
-        }) 
+          target_equipment_id: log.target_equipment_id || undefined
+        })
       });
       setLogs(prev => prev.filter(l => l._id !== log._id));
       setArchivedThreats(prev => new Set(prev).add(log.source_ip));

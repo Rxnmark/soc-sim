@@ -62,7 +62,7 @@ SIMULATION_ATTACKS = {
 CRITICAL_GATEWAY_IDS = {1}
 
 # Default attack weights for probability selection
-DEFAULT_ATTACK_WEIGHTS = {"DDoS": 3, "Stealth": 4, "Ransomware": 2, "Minor": 5}
+DEFAULT_ATTACK_WEIGHTS = {"DDoS": 4, "Stealth": 3, "Ransomware": 2, "Minor": 3}
 
 # Phase escalation threshold (seconds)
 ESCALATION_PHASE_SECONDS = 180  # 3 minutes

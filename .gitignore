@@ -2,3 +2,5 @@
 front/src/node_modules/
 __pycache__/
 .env
+back/.env
+back/backups/

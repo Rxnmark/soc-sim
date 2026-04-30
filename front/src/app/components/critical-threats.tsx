@@ -1,4 +1,5 @@
 import { useEffect, useState } from "react";
+import authenticatedFetch from "../utils/api-fetch";
 import { Card } from "./ui/card";
 import { Badge } from "./ui/badge";
 import { AlertTriangle, DollarSign, TrendingUp, ShieldAlert, SearchX } from "lucide-react";
@@ -10,10 +11,11 @@ export function CriticalThreats({ searchQuery = "" }: { searchQuery?: string }) 
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    fetch("http://127.0.0.1:8000/api/v1/business-risks")
+    authenticatedFetch("/api/v1/business-risks")
       .then((res) => res.json())
       .then((data) => {
-        const activeRisks = data.filter((r: any) => r.status !== "Mitigated");
+        const dataArray = Array.isArray(data) ? data : [];
+        const activeRisks = dataArray.filter((r: any) => r.status !== "Mitigated");
         const sortedRisks = activeRisks.sort((a: any, b: any) => (b.probability * b.impact) - (a.probability * a.impact));
         setThreats(sortedRisks);
         setLoading(false);
@@ -37,10 +39,12 @@ export function CriticalThreats({ searchQuery = "" }: { searchQuery?: string }) 
     return { text: "Medium", color: "text-yellow-500", bg: "bg-yellow-500/10 border-yellow-500/20" };
   };
 
-  const filteredThreats = threats.filter(threat => 
-    threat.title.toLowerCase().includes(searchQuery.toLowerCase()) || 
-    threat.category.toLowerCase().includes(searchQuery.toLowerCase())
-  );
+  const filteredThreats = Array.isArray(threats) ? threats.filter(threat => 
+    threat && (
+      threat.title.toLowerCase().includes(searchQuery.toLowerCase()) || 
+      threat.category.toLowerCase().includes(searchQuery.toLowerCase())
+    )
+  ) : [];
 
   const totalExposure = filteredThreats.reduce((sum, threat) => sum + calculateFinancialImpact(threat.impact), 0);
 

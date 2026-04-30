@@ -1,10 +1,16 @@
+import os
+
 from sqlalchemy import create_engine
 from sqlalchemy.orm import sessionmaker, declarative_base
 import motor.motor_asyncio
 
 # --- PostgreSQL Configuration ---
 # Format: postgresql://username:password@host:port/database_name
-POSTGRES_URL = "postgresql://admin:170273@localhost:5432/expert_system"
+# In Docker, host is the service name (e.g., "postgres"). Falls back to localhost for local dev.
+POSTGRES_URL = os.getenv(
+    "POSTGRES_URL",
+    "postgresql://admin:170273@localhost:5432/expert_system"
+)
 
 # Setup SQLAlchemy engine and session
 engine = create_engine(POSTGRES_URL)
@@ -22,7 +28,11 @@ def get_db():
 
 # --- MongoDB Configuration ---
 # Format: mongodb://username:password@host:port
-MONGO_URL = "mongodb://admin:170273@localhost:27017"
+# In Docker, host is the service name (e.g., "mongodb"). Falls back to localhost for local dev.
+MONGO_URL = os.getenv(
+    "MONGO_URL",
+    "mongodb://admin:170273@localhost:27017"
+)
 
 # Setup Motor client for async MongoDB operations
 mongo_client = motor.motor_asyncio.AsyncIOMotorClient(MONGO_URL)

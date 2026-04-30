@@ -103,10 +103,7 @@ export const enExtended = {
     active: "Active",
     prob: "Prob",
   },
-  assets: {
-    title: "Asset Protection Registry",
-    subtitle: "Network devices and infrastructure",
-  },
+
   riskManagement: {
     sidebarTitle: "Risk Management",
     title: "Risk Management",

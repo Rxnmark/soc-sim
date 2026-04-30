@@ -1,7 +1,5 @@
 # Project Knowledge Base & Architecture Map
 
-Пам'ятка для AI-агента: Цей файл (PROJECT_MAP.md) містить глобальну архітектуру. Для відстеження поточних задач та кроків використовуй файл cline_tracker.md.
-
 ## 🎯 Project Core
 Це експертна система для моніторингу кібербезпеки та управління ризиками. Система складається з двох дашбордів:
 - **Risk Management Dashboard** — управління бізнес-ризиками, матриця ризиків, відсоток мінімізації
@@ -9,7 +7,7 @@
 
 Система підтримує двомовний інтерфейс (українська/англійська) та включає механізм симуляції загроз та експертну систему з автоматичним реагуванням на інциденти.
 
-**Загальна кількість рядків коду: 12 229** (скановано через `count_lines.py`, виключено lock-файли та debug.txt)
+**Загальна кількість рядків коду: 13 168** (скановано через `count_lines.py`, виключено lock-файли та debug.txt)
 
 **Top 20 файлів за кількістю рядків (без lock-файлів):**
 
@@ -17,16 +15,18 @@
 |------|--------|
 | `front/src/app/components/ui/sidebar.tsx` | 726 |
 | `front/src/app/components/ui/chart.tsx` | 353 |
+| `front/src/app/components/sim-control-panel.tsx` | 279 |
 | `front/src/app/components/ui/menubar.tsx` | 276 |
 | `front/src/app/components/ui/dropdown-menu.tsx` | 257 |
 | `front/src/app/components/ui/context-menu.tsx` | 252 |
 | `front/src/app/components/ui/carousel.tsx` | 241 |
 | `front/src/app/pages/cyber-analytics.tsx` | 240 |
-| `front/src/app/pages/analytics.tsx` | ~200 |
+| `front/src/app/pages/analytics.tsx` | 238 |
+| `back/simulation_endpoints.py` | 218 |
+| `front/src/app/components/expert-panel.tsx` | 202 |
+| `back/simulation_core.py` | 201 |
 | `front/src/app/pages/cyber-threats.tsx` | 196 |
-| `front/src/app/components/sim-control-panel.tsx` | 268 |
-| `back/main_api.py` | 193 |
-| `back/simulation_core.py` | 193 |
+| `back/main_api.py` | 194 |
 | `back/requirements.txt` | 189 |
 | `front/src/app/components/ui/select.tsx` | 189 |
 | `front/src/app/components/expert-utils.tsx` | 185 |
@@ -46,9 +46,11 @@
 | `back/main_routes.py` | Ендпоїнти статистики загроз: `get_threat_statistics()`, `archive_threat()`, `get_archived_threats()`. |
 | `back/main_api.py` | **Реєстрація всіх API маршрутів** — `register_all_routes(app)`: імпортує та реєструє simulation routes, threat endpoints, equipment, logs, risks, expert system, analytics. |
 | `back/main_reset.py` | **Reset endpoint** — `setup_reset(app)`: `POST /api/v1/reset` — скидання БД, створення 20 одиниць обладнання, 5 бізнес-ризиків, запуск симуляції. Імпорт `simulation_manager` з `simulation_endpoints`. |
-| `back/simulation_endpoints.py` | **Симуляційні API-ендпоїнти**: `register_simulation_routes(app)` — реєструє `/api/v1/simulation/*` (status, fix, start, stop) та `/api/v1/actions/block` (auto-fix). `simulation_manager = SimulationManager()`. |
-| `back/models.py` | SQLAlchemy моделі: `Equipment` (обладнання з ієрархією), `RiskAssessment` (оцінки ризиків), `BusinessRisk` (бізнес-ризики), `Threat` (загрози). |
-| `back/schemas.py` | Pydantic схеми для валідації API відповідей: `ThreatResponse`, `SecurityLog`, `FixRequest`, `SimulationStatus`, `FixResponse`. |
+| `back/simulation_endpoints.py` | **Симуляційні API-ендпоїнти**: `register_simulation_routes(app)` — реєструє `/api/v1/simulation/*` (status, fix, start, stop) та `/api/v1/actions/block` (auto-fix), а також `/api/v1/threats/archive-and-reboot`. `simulation_manager = SimulationManager()`. |
+| `back/models.py` | SQLAlchemy моделі: `Equipment`, `RiskAssessment`, `BusinessRisk`, `Threat`, `User` (JWT auth: username, password_hash, role, totp_secret, is_2fa_enabled). |
+| `back/schemas.py` | Pydantic схеми: `ThreatResponse`, `SecurityLog`, `FixRequest`, `SimulationStatus`, `FixResponse`, `UserLogin`, `TwoFactorSetup`, `TwoFactorVerify`, `UserInfo`. |
+| `back/auth_utils.py` | **JWT + TOTP утиліти** — `hash_password()` (argon2), `verify_password()`, `create_access_token()`, `decode_access_token()`, `get_totp_uri()`, `get_current_user()` (FastAPI Depends), `require_role()` (RBAC factory). |
+| `back/auth_routes.py` | **Auth API routes** — `POST /api/v1/auth/login`, `POST /api/v1/auth/setup-2fa`, `POST /api/v1/auth/verify-2fa`, `POST /api/v1/auth/verify-2fa-login`, `GET /api/v1/auth/me`, `POST /api/v1/auth/logout`. |
 | `back/threats.py` | База загроз з трьома категоріями: `warning_threats` (Port Scan, Reconnaissance, Policy Violation тощо), `active_threats` (DDoS, Brute-force, SQL Injection, Phishing, Malware), `critical_threats` (Ransomware, Data Exfiltration, APT, Zero-day, Lateral Movement). Функція `generate_random_threat()` для створення випадкової загрози. |
 | `back/attack_definitions.py` | Конфігурація атак: `SIMULATION_ATTACKS` (DDoS з підтипами: Traffic Flood, SYN Flood, NTP Amplification, DNS Amplification, Slowloris, HTTP Flood, UDP Flood; Stealth; Ransomware), `CRITICAL_GATEWAY_IDS`, константи часу. |
 | `back/simulation_core.py` | **SimulationCore** — асинхронна логіка гри: `_game_loop()`, `_spawn_attack()`, `_schedule_ransomware_encryption()`, `_apply_stealth_financial_impact()`, `_update_topology_dependencies()` (каскадна ескалація offline-статусу). Імпортує `_random_delay()`, `_pick_attack_type()`, `_generate_unique_ip()`, `_all_equipment_down()` з `simulation_helpers`. |
@@ -57,7 +59,7 @@
 | `back/simulation.py` | **SimulationManager** (наспадник SimulationCore) — управління життєвим циклом: `start()`, `stop()`, `apply_fix()` (non-blocking з `_recovery_equipment()` фоновим завданням), `get_status()`. Після відновлення обладнання викликає `_update_topology_dependencies` для перерахунку статусів дочірніх пристроїв. |
 | `back/database.py` | Конфігурація підключень: PostgreSQL (SQLAlchemy) + MongoDB (Motor async). Змінні `engine`, `SessionLocal`, `security_logs_collection`. |
 | `back/docker-compose.yml` | Docker-конфігурація для запуску PostgreSQL та MongoDB сервісів. |
-| `back/requirements.txt` | Python-залежності: FastAPI, SQLAlchemy, Motor, Pydantic, Flask, Jupyter та ін. |
+| `back/requirements.txt` | Python-залежності: FastAPI, SQLAlchemy, Motor, Pydantic, Flask, Jupyter, **PyJWT**, **pyotp**, **passlib[bcrypt]**. |
 | `back/test_db.py` | Тестовий скрипт для перевірки підключення до бази даних. |
 
 ### Frontend (`front/src/`)
@@ -88,7 +90,7 @@
 | `risk-management-charts.tsx` | **Чарти** — `RiskCategoryDonut`: DonutChart (DDoS/Ransomware/Stealth). `RiskFinancialBar`: BarChart з фінансовим вплигом. Кольори: DDoS=червоний, Ransomware=помаранчевий, Stealth=фіолетовий. |
 | `cybersecurity.tsx` | **Cybersecurity Dashboard** — головна сторінка кібербезпеки. KPI-картки (critical vulnerabilities, medium risks, sensors offline), EquipmentTable з ієрархічним обладнанням, ExpertPanel для аналізу логів. Індикатор статусу системи (Active Threats / Maintenance / Secure). |
 | `analytics.tsx` | **Business Analytics Dashboard** — фінансовий дашборд ризиків (DDoS, Ransomware, Stealth). Картки з фінансовим впливом у USD, графік за часовими інтервалами (auto-refresh 5-10 сек). |
-| `reports.tsx` | Placeholder-сторінка для звітів (перепрофілюється). |
+| `reports.tsx` | **Сторінка звітів** — повноцінний інтерактивний дашборд з календарною сіткою, File System Access API (вибір каталогу), IndexedDB-персистентність, side-by-side лейаут. Компоненти: ReportsCalendar (motion анімації, locale залежить від мови), ReportsPanel (RiskMatrix + Recharts, переклад через useTranslation). Типи: ReportData, CalendarDay. Утиліти: `reports-db.ts` (IndexedDB wrapper). Кнопка Select Folder використовує variant="default". Переклади: reports.title, reports.subtitle, reports.select_folder, reports.refresh_data, reports.no_data, reports.report_for_date тощо. |
 | `settings.tsx` | Сторінка глобальних налаштувань. |
 | `cyber-threats.tsx` | **Threat Statistics** — сторінка статистики загроз з трьома колонками (Незначні, Потребують уваги, Критичні). Використовує ColumnLogs з cyber-threats-components.tsx. NotificationsPopover з riskSummary + displayedLogsCount. API: `/api/v1/threats/statistics`, `/api/v1/logs`, `/api/v1/risks/summary`, `/api/v1/threats/archived`. |
 | `cyber-threats-components.tsx` | **Компоненти для cyber-threats** — `ColumnLogs` (колонка з логами загроз), `LogCard` (картка події), `ArchivedLogCard` (архівована картка). |
@@ -102,8 +104,9 @@
 ### Frontend Components (`front/src/app/components/`)
 | File | Description |
 |------|-------------|
-| `sidebar-nav.tsx` | **Бокова навігація** з модульною структурою (Cyber Defense / Risk & Compliance). Система ролей (CEO, CISO, PM) з демо-логіном через модальне вікно. Блокування доступу для ролей без прав. Переклади через `useTranslation`. |
-| `login-modal.tsx` | **Модальне вікно вибору ролі** — `LoginModal` компонент з профілями користувачів (CEO/CISO/PM), кольоровими аватарами, перекладеними підписами. Імпортує `USERS_DATA` з `sidebar-data`. |
+| `sidebar-nav.tsx` | **Бокова навігація** з модульною структурою (Cyber Defense / Risk & Compliance). JWT-автентифікація: декодує токен з `localStorage`, відображає профіль користувача, Logout. RBAC-фільтрація навігації (CEO/CISO/PM). Аuto-показ LoginModal якщо токен відсутній. |
+| `login-modal.tsx` | **JWT Login Modal** — двохфазний логін: credentials (username/password) → 2FA (TOTP 6-digit code). API: `/api/v1/auth/login`, `/api/v1/auth/verify-2fa-login`. Callback `onLoginSuccess` зберігає токен у localStorage. |
+| `protected-route.tsx` | **Route guard** — `ProtectedRoute` компонент для захисту маршрутів. Перевіряє JWT токен та роль. Якщо доступ заборонено — редірект на дефолтну сторінку. Показує LoginModal якщо не автентифіковано. |
 | `sidebar-data.ts` | **Дані навігації** — визначення `CYBER_NAV_ITEMS` та `RISK_NAV_ITEMS` з translation keys (не перекладеними значеннями). `NavItem` тип з `React.ComponentType` іконками. `USERS_DATA` для демо-логін системи. |
 | `expert-utils.tsx` | **Утиліти для експертної системи** — `LogStyle` тип, `getLogStyle()` для кольору подій (red/yellow/emerald), `translateLogEventType()` для перекладу типу події, `getEventDescription()` для отримання опису, `mapEventTypeToKey()` маппінг на translation key, `formatDate()` форматування часу, `classifyThreat()` категоризація загроз (warning/active/critical). Підтримує мапінг для DDoS підтипів (Slowloris, UDP Flood, DNS Amplification), ransomware, stealth загроз. |
 | `expert-panel.tsx` | **Експертна панель** — live-логи безпеки з MongoDB. Імпортує `ExpertDetailCard` з `./expert-panel-detail`. Використовує `expert-utils.tsx` для перекладу. |
@@ -121,9 +124,24 @@
 ### UI Components (`front/src/app/components/ui/`)
 Універсальні UI компоненти (кнопки, інпути, діалоги) на базі Radix UI та Tailwind. Не редагувати без гострої потреби.
 
-### Frontend Utilities (`front/`)
+### DevOps (root + `back/`)
 | File | Description |
 |------|-------------|
+| `.github/workflows/ci.yml` | **CI/CD Pipeline** — GitHub Actions workflow: Python 3.11, кешування pip, запуск `pytest -v --tb=short` з `working-directory: back`. Працює на push/PR до `main`. |
+| `back/backup.sh` | **Backup Script (Linux)** — Bash скрипт для бекапу PostgreSQL та MongoDB з Docker контейнерів. Читає credentials з `.env`. Підтримує cron job setup. |
+| `back/backup.ps1` | **Backup Script (Windows)** — PowerShell еквівалент `backup.sh`. Перевіряє доступність контейнерів перед бекапом, використовує `PGPASSWORD` для PostgreSQL. |
+| `back/.env` | **Credentials file** — PostgreSQL (admin/170273 → expert_system), MongoDB (admin/170273 → expert_telemetry). Додано до `.gitignore`. |
+| `back/monitoring/prometheus.yml` | Prometheus configuration для моніторингу. |
+| `back/monitoring/grafana/provisioning/datasources/datasource.yml` | Grafana datasource provisioning. |
+| `back/tests/` | **Test suite** — pytest (19 testів: auth, equipment, simulation). Використовує SQLite in-memory + AsyncMock. |
+| `back/pytest.ini` | pytest конфігурація (testpaths, asyncio mode). |
+| `back/backups/.gitkeep` | Зберігає директорію бекапів у git. |
+| `back/backups/` | Директорія з бекапами (pg_backup_*.sql, mongo_backup_*.archive). Додано до `.gitignore`. |
+
+### Frontend Utilities (`front/src/app/utils/`)
+| File | Description |
+|------|-------------|
+| `front/src/app/utils/api-fetch.ts` | **Fetch interceptor** — автоматично додає `Authorization: Bearer <token>` до всіх запитів. При 401 очищує токен та диспетчеризує `auth-expired` event. |
 | `front/scan.py` | Python-скрипт для генерації дерева проектних файлів у `project_structure.txt`. |
 | `front/project_structure.txt` | Згенерована структура проекту. |
 | `package.json` | Кореневий package.json з залежністю `reactflow`. |
@@ -158,14 +176,20 @@
 ## 🛑 Project-Specific Rules
 
 1. **Backend API** використовує версіонування `/api/v1/`
-2. **Дві бази даних**: PostgreSQL для структурних даних (обладнання, ризики, загрози), MongoDB для логів безпеки
-3. **Експертна система** автоматично аналізує логи та створює `RiskAssessment` при виявленні підозрілих подій (`unauthorized`, `attack`, `scan`)
-4. **Симуляція загроз**: POST `/api/v1/threats/simulate` генерує випадкову загрозу; GET `/api/v1/threats` автоматично створює загрозу якщо база порожня
-5. **Reset endpoint** (`POST /api/v1/reset`) повністю скидає БД та генерує 20 одиниць обладнання + стартові дані
-6. **Мови**: переклади зберігаються у `translations/uk.ts` та `translations/en.ts` (re-export з `-core`, `-threats`, `-extended` файлів), доступ через `useTranslation()` hook
-7. **CORS**: відкритий для всіх джерел (`allow_origins=["*"]`)
-8. **Обладнання має ієрархію** через `parent_id` (self-referencing foreign key)
-9. **Симуляція атак**: POST `/api/v1/simulation/start` запускає `SimulationManager` з асинхронним game loop. Три типи атак (DDoS, Stealth, Ransomware) з різною логікою впливу. `apply_fix()` для ручного вирішення інцидентів. Архітектура розділена на 5 файлів: `attack_definitions.py` (константи), `simulation_core.py` (ядро гри), `simulation_helpers.py` (допоміжні функції), `simulation.py` (менеджер), `simulation_endpoints.py` (API-ендпоїнти).
-10. **Експертна система**: `expert-utils.tsx` містить утиліти для перекладу подій (`translateLogEventType`, `getEventDescription`), `sidebar-data.ts` визначає навігаційні items з translation keys для уникнення hook violation
-11. **UI-компоненти** (`front/src/app/components/ui/`) не редагуються — це бібліотечні компоненти на базі Radix UI
-12. **Максимальна довжина файлу**: 200 рядків (без ui/ компонентів). Якщо файл перевищує — розділити на частини з імпортами.
+2. **Дві бази даних**: PostgreSQL для структурних даних (обладнання, ризики, загрози, користувачі), MongoDB для логів безпеки
+3. **JWT Authentication**: Всі захищені API-запити вимагають `Authorization: Bearer <JWT>`. Токен зберігається у `localStorage`. Секрет: `SOC_SIMULATOR_SECRET_K3Y` (змінити в продакшені). Термін дії: 8 годин.
+4. **RBAC**: Ролі `CEO`, `CISO`, `PM`. Використовувати `require_role(["CEO", "CISO"])` як FastAPI Depends для захисту ендпоїнтів.
+5. **2FA (TOTP)**: Використовує `pyotp`. Секрет зберігається у `User.totp_secret`. 2FA вмикається через `/setup-2fa` → `/verify-2fa`.
+6. **Default users**: При DB Reset створюються `ceo`, `ciso`, `pm` з паролем `password123` (хешується через argon2).
+7. **Frontend Auth Flow**: `sidebar-nav.tsx` на монтуванні перевіряє JWT → якщо відсутній або прострочений → показує `LoginModal`. Після успішного логіну токен зберігається у localStorage.
+8. **Fetch Interceptor**: `api-fetch.ts` автоматично додає Bearer-токен до всіх запитів. При 401 — очищує токен та диспетчеризує `auth-expired` event.
+9. **ProtectedRoute**: Обгортайте захищені сторінки `<ProtectedRoute allowedRoles={["CEO", "CISO"]}>`.
+10. **Експертна система** автоматично аналізує логи та створює `RiskAssessment` при виявленні підозрілих подій (`unauthorized`, `attack`, `scan`)
+11. **Симуляція загроз**: POST `/api/v1/threats/simulate` генерує випадкову загрозу; GET `/api/v1/threats` автоматично створює загрозу якщо база порожня
+12. **Reset endpoint** (`POST /api/v1/reset`) повністю скидає БД та генерує 20 одиниць обладнання + стартові дані + seed users
+13. **Мови**: переклади зберігаються у `translations/uk.ts` та `translations/en.ts` (re-export з `-core`, `-threats`, `-extended` файлів), доступ через `useTranslation()` hook
+14. **CORS**: відкритий для всіх джерел (`allow_origins=["*"]`)
+15. **Обладнання має ієрархію** через `parent_id` (self-referencing foreign key)
+16. **Симуляція атак**: POST `/api/v1/simulation/start` запускає `SimulationManager` з асинхронним game loop. Три типи атак (DDoS, Stealth, Ransomware) з різною логікою впливу. `apply_fix()` для ручного вирішення інцидентів. Архітектура розділена на 5 файлів: `attack_definitions.py` (константи), `simulation_core.py` (ядро гри), `simulation_helpers.py` (допоміжні функції), `simulation.py` (менеджер), `simulation_endpoints.py` (API-ендпоїнти).
+17. **UI-компоненти** (`front/src/app/components/ui/`) не редагуються — це бібліотечні компоненти на базі Radix UI
+18. **Максимальна довжина файлу**: 200 рядків (без ui/ компонентів). Якщо файл перевищує — розділити на частини з імпортами.

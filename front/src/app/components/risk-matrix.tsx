@@ -1,4 +1,5 @@
 import { useEffect, useState, useMemo } from "react";
+import authenticatedFetch from "../utils/api-fetch";
 import { Card } from "./ui/card";
 import { useTranslation } from "../../context/LanguageContext";
 
@@ -30,10 +31,10 @@ export function RiskMatrix() {
 
   useEffect(() => {
     const fetchLogs = () => {
-      fetch("http://127.0.0.1:8000/api/v1/logs")
+      authenticatedFetch("/api/v1/logs")
         .then((res) => res.json())
         .then((data) => {
-          setLogs(data);
+          setLogs(Array.isArray(data) ? data : []);
           setLoading(false);
         })
         .catch((err) => console.error(err));
@@ -48,12 +49,15 @@ export function RiskMatrix() {
 
   const attackCounts = useMemo(() => {
     const counts: Record<string, number> = {};
-    logs.forEach((log) => {
-      const cat = classifyAttack(log.event_type);
-      if (cat !== "warning" && cat !== "resolved") {
-        counts[cat] = (counts[cat] || 0) + 1;
-      }
-    });
+    if (Array.isArray(logs)) {
+      logs.forEach((log) => {
+        if (!log || !log.event_type) return;
+        const cat = classifyAttack(log.event_type);
+        if (cat !== "warning" && cat !== "resolved") {
+          counts[cat] = (counts[cat] || 0) + 1;
+        }
+      });
+    }
     return counts;
   }, [logs]);
 
@@ -152,16 +156,16 @@ export function RiskMatrix() {
                 return (
                   <div
                     key={`${prob}-${imp}`}
-                    className={`relative rounded-md border p-2.5 transition-colors flex flex-wrap gap-1.5 content-start ${getCellColor(prob, imp)}`}
+                    className={`relative rounded-md border p-1.5 transition-colors flex flex-wrap gap-1 content-start ${getCellColor(prob, imp)}`}
                   >
                     {cellRisks.map((risk) => (
                       <div
                         key={risk.id}
-                        className={`w-3.5 h-3.5 rounded-full cursor-help transition-all duration-300 ${getDotColor(risk.category)}`}
+                        className={`w-2.5 h-2.5 rounded-full cursor-help transition-all duration-300 ${getDotColor(risk.category)}`}
                         title={`${risk.title}\nType: ${risk.category}\nAttacks: ${risk.count}`}
                       />
                     ))}
-                    <span className="absolute bottom-1 right-1.5 text-[10px] font-mono opacity-40 text-muted-foreground font-bold">{prob},{imp}</span>
+                    <span className="absolute bottom-0.5 right-1 text-[10px] font-mono opacity-40 text-muted-foreground font-bold">{prob},{imp}</span>
                   </div>
                 );
               })
